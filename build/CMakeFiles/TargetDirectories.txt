@@ -1,0 +1,4 @@
+/home/awais/MNIST/build/CMakeFiles/mnist.dir
+/home/awais/MNIST/build/CMakeFiles/run.dir
+/home/awais/MNIST/build/CMakeFiles/edit_cache.dir
+/home/awais/MNIST/build/CMakeFiles/rebuild_cache.dir

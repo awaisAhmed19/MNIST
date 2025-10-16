@@ -1,0 +1,1 @@
+/usr/sbin/c++ -Wl,--dependency-file=CMakeFiles/mnist.dir/link.d CMakeFiles/mnist.dir/src/File_reader.cpp.o CMakeFiles/mnist.dir/src/nn.cpp.o -o bin/mnist  /usr/lib/libraylib.so -lm -lpthread -ldl -lrt -lX11 -L/usr/lib -lraylib
