@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/home/awais/DEV/MNIST/build/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

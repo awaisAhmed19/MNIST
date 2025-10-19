@@ -1,6 +1,6 @@
 /data
 !data.zip
-
+/build
 *.zip
 *.png
 

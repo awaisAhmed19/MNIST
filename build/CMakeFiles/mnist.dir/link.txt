@@ -1,1 +1,0 @@
-/usr/sbin/c++ -Wl,--dependency-file=CMakeFiles/mnist.dir/link.d CMakeFiles/mnist.dir/src/Filer.cpp.o CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.o CMakeFiles/mnist.dir/src/main.cpp.o -o bin/mnist  /usr/lib/libraylib.so -lm -lpthread -ldl -lrt -lX11 -L/usr/lib -lraylib
