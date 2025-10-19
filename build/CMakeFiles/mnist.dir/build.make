@@ -53,10 +53,10 @@ RM = /usr/sbin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/awais/MNIST
+CMAKE_SOURCE_DIR = /home/awais/DEV/MNIST
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/awais/MNIST/build
+CMAKE_BINARY_DIR = /home/awais/DEV/MNIST/build
 
 # Include any dependencies generated for this target.
 include CMakeFiles/mnist.dir/depend.make
@@ -72,49 +72,65 @@ include CMakeFiles/mnist.dir/flags.make
 CMakeFiles/mnist.dir/codegen:
 .PHONY : CMakeFiles/mnist.dir/codegen
 
-CMakeFiles/mnist.dir/src/File_reader.cpp.o: CMakeFiles/mnist.dir/flags.make
-CMakeFiles/mnist.dir/src/File_reader.cpp.o: /home/awais/MNIST/src/File_reader.cpp
-CMakeFiles/mnist.dir/src/File_reader.cpp.o: CMakeFiles/mnist.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/awais/MNIST/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/mnist.dir/src/File_reader.cpp.o"
-	/usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/mnist.dir/src/File_reader.cpp.o -MF CMakeFiles/mnist.dir/src/File_reader.cpp.o.d -o CMakeFiles/mnist.dir/src/File_reader.cpp.o -c /home/awais/MNIST/src/File_reader.cpp
+CMakeFiles/mnist.dir/src/Filer.cpp.o: CMakeFiles/mnist.dir/flags.make
+CMakeFiles/mnist.dir/src/Filer.cpp.o: /home/awais/DEV/MNIST/src/Filer.cpp
+CMakeFiles/mnist.dir/src/Filer.cpp.o: CMakeFiles/mnist.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/awais/DEV/MNIST/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/mnist.dir/src/Filer.cpp.o"
+	/usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/mnist.dir/src/Filer.cpp.o -MF CMakeFiles/mnist.dir/src/Filer.cpp.o.d -o CMakeFiles/mnist.dir/src/Filer.cpp.o -c /home/awais/DEV/MNIST/src/Filer.cpp
 
-CMakeFiles/mnist.dir/src/File_reader.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/mnist.dir/src/File_reader.cpp.i"
-	/usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/awais/MNIST/src/File_reader.cpp > CMakeFiles/mnist.dir/src/File_reader.cpp.i
+CMakeFiles/mnist.dir/src/Filer.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/mnist.dir/src/Filer.cpp.i"
+	/usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/awais/DEV/MNIST/src/Filer.cpp > CMakeFiles/mnist.dir/src/Filer.cpp.i
 
-CMakeFiles/mnist.dir/src/File_reader.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/mnist.dir/src/File_reader.cpp.s"
-	/usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/awais/MNIST/src/File_reader.cpp -o CMakeFiles/mnist.dir/src/File_reader.cpp.s
+CMakeFiles/mnist.dir/src/Filer.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/mnist.dir/src/Filer.cpp.s"
+	/usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/awais/DEV/MNIST/src/Filer.cpp -o CMakeFiles/mnist.dir/src/Filer.cpp.s
 
-CMakeFiles/mnist.dir/src/nn.cpp.o: CMakeFiles/mnist.dir/flags.make
-CMakeFiles/mnist.dir/src/nn.cpp.o: /home/awais/MNIST/src/nn.cpp
-CMakeFiles/mnist.dir/src/nn.cpp.o: CMakeFiles/mnist.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/awais/MNIST/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/mnist.dir/src/nn.cpp.o"
-	/usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/mnist.dir/src/nn.cpp.o -MF CMakeFiles/mnist.dir/src/nn.cpp.o.d -o CMakeFiles/mnist.dir/src/nn.cpp.o -c /home/awais/MNIST/src/nn.cpp
+CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.o: CMakeFiles/mnist.dir/flags.make
+CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.o: /home/awais/DEV/MNIST/src/Matrix/matrix.cpp
+CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.o: CMakeFiles/mnist.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/awais/DEV/MNIST/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.o"
+	/usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.o -MF CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.o.d -o CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.o -c /home/awais/DEV/MNIST/src/Matrix/matrix.cpp
 
-CMakeFiles/mnist.dir/src/nn.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/mnist.dir/src/nn.cpp.i"
-	/usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/awais/MNIST/src/nn.cpp > CMakeFiles/mnist.dir/src/nn.cpp.i
+CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.i"
+	/usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/awais/DEV/MNIST/src/Matrix/matrix.cpp > CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.i
 
-CMakeFiles/mnist.dir/src/nn.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/mnist.dir/src/nn.cpp.s"
-	/usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/awais/MNIST/src/nn.cpp -o CMakeFiles/mnist.dir/src/nn.cpp.s
+CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.s"
+	/usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/awais/DEV/MNIST/src/Matrix/matrix.cpp -o CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.s
+
+CMakeFiles/mnist.dir/src/main.cpp.o: CMakeFiles/mnist.dir/flags.make
+CMakeFiles/mnist.dir/src/main.cpp.o: /home/awais/DEV/MNIST/src/main.cpp
+CMakeFiles/mnist.dir/src/main.cpp.o: CMakeFiles/mnist.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/awais/DEV/MNIST/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/mnist.dir/src/main.cpp.o"
+	/usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/mnist.dir/src/main.cpp.o -MF CMakeFiles/mnist.dir/src/main.cpp.o.d -o CMakeFiles/mnist.dir/src/main.cpp.o -c /home/awais/DEV/MNIST/src/main.cpp
+
+CMakeFiles/mnist.dir/src/main.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/mnist.dir/src/main.cpp.i"
+	/usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/awais/DEV/MNIST/src/main.cpp > CMakeFiles/mnist.dir/src/main.cpp.i
+
+CMakeFiles/mnist.dir/src/main.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/mnist.dir/src/main.cpp.s"
+	/usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/awais/DEV/MNIST/src/main.cpp -o CMakeFiles/mnist.dir/src/main.cpp.s
 
 # Object files for target mnist
 mnist_OBJECTS = \
-"CMakeFiles/mnist.dir/src/File_reader.cpp.o" \
-"CMakeFiles/mnist.dir/src/nn.cpp.o"
+"CMakeFiles/mnist.dir/src/Filer.cpp.o" \
+"CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.o" \
+"CMakeFiles/mnist.dir/src/main.cpp.o"
 
 # External object files for target mnist
 mnist_EXTERNAL_OBJECTS =
 
-bin/mnist: CMakeFiles/mnist.dir/src/File_reader.cpp.o
-bin/mnist: CMakeFiles/mnist.dir/src/nn.cpp.o
+bin/mnist: CMakeFiles/mnist.dir/src/Filer.cpp.o
+bin/mnist: CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.o
+bin/mnist: CMakeFiles/mnist.dir/src/main.cpp.o
 bin/mnist: CMakeFiles/mnist.dir/build.make
 bin/mnist: CMakeFiles/mnist.dir/compiler_depend.ts
 bin/mnist: /usr/lib/libraylib.so
 bin/mnist: CMakeFiles/mnist.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/awais/MNIST/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX executable bin/mnist"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/awais/DEV/MNIST/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX executable bin/mnist"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/mnist.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -126,6 +142,6 @@ CMakeFiles/mnist.dir/clean:
 .PHONY : CMakeFiles/mnist.dir/clean
 
 CMakeFiles/mnist.dir/depend:
-	cd /home/awais/MNIST/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/awais/MNIST /home/awais/MNIST /home/awais/MNIST/build /home/awais/MNIST/build /home/awais/MNIST/build/CMakeFiles/mnist.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /home/awais/DEV/MNIST/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/awais/DEV/MNIST /home/awais/DEV/MNIST /home/awais/DEV/MNIST/build /home/awais/DEV/MNIST/build /home/awais/DEV/MNIST/build/CMakeFiles/mnist.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : CMakeFiles/mnist.dir/depend
 

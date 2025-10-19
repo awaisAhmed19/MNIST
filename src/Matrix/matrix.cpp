@@ -7,6 +7,17 @@ Matrix Matrix ::create(int row, int col) {
     return mat;
 }
 
+Matrix::Matrix(const Matrix& mat) {
+    m_rows = mat.m_rows;
+    m_cols = mat.m_cols;
+
+    m_samples = new double*[m_rows];
+    for (int i = 0; i < m_rows; ++i) {
+        m_samples[i] = new double[m_cols];
+        for (int j = 0; j < m_cols; ++j) m_samples[i][j] = mat.m_samples[i][j];
+    }
+}
+
 double uniform_distribution(double l, double h) {
     double diff = h - l;
     int scale = 10000;
@@ -23,15 +34,15 @@ void Matrix ::fill(int num) {
 }
 
 void Matrix::getShape(int& r, int& c) {
-    r = this->m_rows;
-    c = this->m_cols;
+    r = (int)this->m_rows;
+    c = (int)this->m_cols;
 }
 
 void Matrix ::print() {
-    std::cout << "Rows: " << m_rows << "Columns: " << m_cols << std::endl;
-    for (int i = 0; i < m_rows; ++i) {
-        for (int j = 0; j < m_cols; ++j) {
-            std::cout << m_samples[i][j] << std::setw(3);
+    std::cout << "Rows: " << this->m_rows << "Columns: " << this->m_cols << std::endl;
+    for (int i = 0; i < this->m_rows; ++i) {
+        for (int j = 0; j < this->m_cols; ++j) {
+            std::cout << " " << this->m_samples[i][j] << " ";
         }
         std::cout << std::endl;
     }
@@ -53,7 +64,7 @@ void Matrix ::randomize(int n) {
 
     for (int i = 0; i < m_rows; ++i) {
         for (int j = 0; j < m_cols; ++j) {
-            m_samples[i][j] = uniform_distribution(min, max);  // TODO:
+            m_samples[i][j] = uniform_distribution(min, max);
         }
     }
 }
@@ -69,26 +80,17 @@ int Matrix ::argmax() {
     }
     return max_ind;
 }
-Matrix Matrix ::flatten(int axis) const {
-    Matrix mat(0, 0);
 
-    if (axis == 0) {
-        mat = Matrix(this->m_rows * this->m_cols, 1);
-    } else if (axis == 1) {
-        mat = Matrix(1, this->m_rows * this->m_cols);
-    } else {
-        std::cout << "Invalid axis value. Must be 0 or 1.\n";
-        return Matrix(0, 0);
-    }
-    for (int i = 0; i < this->m_rows; ++i) {
-        for (int j = 0; j < this->m_cols; ++j) {
-            int ind = i * this->m_cols + j;
+Matrix Matrix::flatten(int axis) const {
+    Matrix mat(axis == 0 ? m_rows * m_cols : 1, axis == 0 ? 1 : m_rows * m_cols);
+    for (int i = 0; i < m_rows; ++i)
+        for (int j = 0; j < m_cols; ++j) {
+            int ind = i * m_cols + j;
             if (axis == 0)
-                mat.m_samples[ind][0] = this->m_samples[i][j];
+                mat.m_samples[ind][0] = m_samples[i][j];
             else
-                mat.m_samples[0][ind] = this->m_samples[i][j];
+                mat.m_samples[0][ind] = m_samples[i][j];
         }
-    }
     return mat;
 }
 
@@ -131,7 +133,7 @@ Matrix Matrix ::operator-(const Matrix& mat) const {
     }
     return o_mat;
 }
-Matrix Matrix ::operator=(const Matrix& mat) {
+Matrix& Matrix ::operator=(const Matrix& mat) {
     if (this == &mat) {
         return *this;
     }

@@ -1,9 +1,11 @@
 file(REMOVE_RECURSE
   "CMakeFiles/mnist.dir/link.d"
-  "CMakeFiles/mnist.dir/src/File_reader.cpp.o"
-  "CMakeFiles/mnist.dir/src/File_reader.cpp.o.d"
-  "CMakeFiles/mnist.dir/src/nn.cpp.o"
-  "CMakeFiles/mnist.dir/src/nn.cpp.o.d"
+  "CMakeFiles/mnist.dir/src/Filer.cpp.o"
+  "CMakeFiles/mnist.dir/src/Filer.cpp.o.d"
+  "CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.o"
+  "CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.o.d"
+  "CMakeFiles/mnist.dir/src/main.cpp.o"
+  "CMakeFiles/mnist.dir/src/main.cpp.o.d"
   "bin/mnist"
   "bin/mnist.pdb"
 )

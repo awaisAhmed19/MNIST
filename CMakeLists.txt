@@ -15,7 +15,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 # =====================
 # Source Files
 # =====================
-file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS src/*.cpp src/*.h)
+file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS src/*.cpp src/*.h src/Matrix/*.cpp src/Matrix/*.h)
 
 add_executable(mnist ${SRC_FILES})
 
@@ -29,7 +29,7 @@ option(USE_CUDA "Enable CUDA support" OFF)
 if (USE_CUDA)
     enable_language(CUDA)
     find_package(CUDA REQUIRED)
-    message(STATUS "🚀 CUDA support enabled")
+    message(STATUS " CUDA support enabled")
 
     # Define CUDA-specific flag for conditional compilation
     target_compile_definitions(mnist PRIVATE USE_CUDA)

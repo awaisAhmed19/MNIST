@@ -53,10 +53,10 @@ RM = /usr/sbin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/awais/MNIST
+CMAKE_SOURCE_DIR = /home/awais/DEV/MNIST
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/awais/MNIST/build
+CMAKE_BINARY_DIR = /home/awais/DEV/MNIST/build
 
 # Utility rule file for run.
 
@@ -67,7 +67,7 @@ include CMakeFiles/run.dir/compiler_depend.make
 include CMakeFiles/run.dir/progress.make
 
 CMakeFiles/run: bin/mnist
-	/home/awais/MNIST/build/bin/mnist
+	/home/awais/DEV/MNIST/build/bin/mnist
 
 CMakeFiles/run.dir/codegen:
 .PHONY : CMakeFiles/run.dir/codegen
@@ -85,6 +85,6 @@ CMakeFiles/run.dir/clean:
 .PHONY : CMakeFiles/run.dir/clean
 
 CMakeFiles/run.dir/depend:
-	cd /home/awais/MNIST/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/awais/MNIST /home/awais/MNIST /home/awais/MNIST/build /home/awais/MNIST/build /home/awais/MNIST/build/CMakeFiles/run.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /home/awais/DEV/MNIST/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/awais/DEV/MNIST /home/awais/DEV/MNIST /home/awais/DEV/MNIST/build /home/awais/DEV/MNIST/build /home/awais/DEV/MNIST/build/CMakeFiles/run.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : CMakeFiles/run.dir/depend
 

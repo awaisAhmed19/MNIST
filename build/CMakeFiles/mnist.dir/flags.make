@@ -4,7 +4,7 @@
 # compile CXX with /usr/sbin/c++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/awais/MNIST/src
+CXX_INCLUDES = -I/home/awais/DEV/MNIST/src
 
 CXX_FLAGS = -std=gnu++17 -I/usr/include
 

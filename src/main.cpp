@@ -1,7 +1,11 @@
-#include "FileReader.h"
+#include <cmath>
+
+#include "./Matrix/matrix.h"
+#include "Filer.h"
 int main(int argc, char* argv[]) {
+    /*
     std::string filename = "../data/train.csv";
-    FileReader read(filename);
+    Filer read(filename);
     read.get_data();
 
     std::vector<std::vector<int>> images = read.get_image_vec();
@@ -26,5 +30,13 @@ int main(int argc, char* argv[]) {
         std::cout << std::endl;
     }
     std::cout << std::endl;
+    */
+
+    Matrix m(23, 23);
+    m.fill(5);
+
+    Matrix result = m.apply([](double x) { return sqrt(x); }, m);
+    result.print();  // prints sin(0.5) in all cells
+
     return 0;
 }

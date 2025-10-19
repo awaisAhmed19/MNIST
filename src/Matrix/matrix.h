@@ -27,7 +27,7 @@ class Matrix {
             m_samples[i] = new double[col];  //() does a zero initalization
         }
     }
-
+    Matrix(const Matrix& mat);
     ~Matrix() {
         for (int i = 0; i < m_rows; ++i) {
             delete[] m_samples[i];
@@ -43,7 +43,7 @@ class Matrix {
     Matrix operator*(const Matrix& mat) const;
     Matrix operator+(const Matrix& mat) const;
     Matrix operator-(const Matrix& mat) const;
-    Matrix operator=(const Matrix& mat);
+    Matrix& operator=(const Matrix& mat);
     Matrix dot(const Matrix& m2);
     Matrix apply(const std::function<double(double)>& func, const Matrix& mat);
     Matrix scale(double n);

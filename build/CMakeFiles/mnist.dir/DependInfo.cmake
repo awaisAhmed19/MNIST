@@ -8,8 +8,9 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/home/awais/MNIST/src/File_reader.cpp" "CMakeFiles/mnist.dir/src/File_reader.cpp.o" "gcc" "CMakeFiles/mnist.dir/src/File_reader.cpp.o.d"
-  "/home/awais/MNIST/src/nn.cpp" "CMakeFiles/mnist.dir/src/nn.cpp.o" "gcc" "CMakeFiles/mnist.dir/src/nn.cpp.o.d"
+  "/home/awais/DEV/MNIST/src/Filer.cpp" "CMakeFiles/mnist.dir/src/Filer.cpp.o" "gcc" "CMakeFiles/mnist.dir/src/Filer.cpp.o.d"
+  "/home/awais/DEV/MNIST/src/Matrix/matrix.cpp" "CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.o" "gcc" "CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.o.d"
+  "/home/awais/DEV/MNIST/src/main.cpp" "CMakeFiles/mnist.dir/src/main.cpp.o" "gcc" "CMakeFiles/mnist.dir/src/main.cpp.o.d"
   "" "bin/mnist" "gcc" "CMakeFiles/mnist.dir/link.d"
   )
 

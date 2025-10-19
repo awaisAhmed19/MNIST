@@ -57,10 +57,10 @@ RM = /usr/sbin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/awais/MNIST
+CMAKE_SOURCE_DIR = /home/awais/DEV/MNIST
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/awais/MNIST/build
+CMAKE_BINARY_DIR = /home/awais/DEV/MNIST/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/awais/MNIST/build/CMakeFiles /home/awais/MNIST/build//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/awais/DEV/MNIST/build/CMakeFiles /home/awais/DEV/MNIST/build//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/awais/MNIST/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/awais/DEV/MNIST/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -113,7 +113,7 @@ preinstall/fast:
 
 # clear depends
 depend:
-	$(CMAKE_COMMAND) -P /home/awais/MNIST/build/CMakeFiles/VerifyGlobs.cmake
+	$(CMAKE_COMMAND) -P /home/awais/DEV/MNIST/build/CMakeFiles/VerifyGlobs.cmake
 	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
@@ -143,53 +143,77 @@ run/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/run.dir/build.make CMakeFiles/run.dir/build
 .PHONY : run/fast
 
-src/File_reader.o: src/File_reader.cpp.o
-.PHONY : src/File_reader.o
+src/Filer.o: src/Filer.cpp.o
+.PHONY : src/Filer.o
 
 # target to build an object file
-src/File_reader.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/mnist.dir/build.make CMakeFiles/mnist.dir/src/File_reader.cpp.o
-.PHONY : src/File_reader.cpp.o
+src/Filer.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mnist.dir/build.make CMakeFiles/mnist.dir/src/Filer.cpp.o
+.PHONY : src/Filer.cpp.o
 
-src/File_reader.i: src/File_reader.cpp.i
-.PHONY : src/File_reader.i
+src/Filer.i: src/Filer.cpp.i
+.PHONY : src/Filer.i
 
 # target to preprocess a source file
-src/File_reader.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/mnist.dir/build.make CMakeFiles/mnist.dir/src/File_reader.cpp.i
-.PHONY : src/File_reader.cpp.i
+src/Filer.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mnist.dir/build.make CMakeFiles/mnist.dir/src/Filer.cpp.i
+.PHONY : src/Filer.cpp.i
 
-src/File_reader.s: src/File_reader.cpp.s
-.PHONY : src/File_reader.s
+src/Filer.s: src/Filer.cpp.s
+.PHONY : src/Filer.s
 
 # target to generate assembly for a file
-src/File_reader.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/mnist.dir/build.make CMakeFiles/mnist.dir/src/File_reader.cpp.s
-.PHONY : src/File_reader.cpp.s
+src/Filer.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mnist.dir/build.make CMakeFiles/mnist.dir/src/Filer.cpp.s
+.PHONY : src/Filer.cpp.s
 
-src/nn.o: src/nn.cpp.o
-.PHONY : src/nn.o
+src/Matrix/matrix.o: src/Matrix/matrix.cpp.o
+.PHONY : src/Matrix/matrix.o
 
 # target to build an object file
-src/nn.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/mnist.dir/build.make CMakeFiles/mnist.dir/src/nn.cpp.o
-.PHONY : src/nn.cpp.o
+src/Matrix/matrix.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mnist.dir/build.make CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.o
+.PHONY : src/Matrix/matrix.cpp.o
 
-src/nn.i: src/nn.cpp.i
-.PHONY : src/nn.i
+src/Matrix/matrix.i: src/Matrix/matrix.cpp.i
+.PHONY : src/Matrix/matrix.i
 
 # target to preprocess a source file
-src/nn.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/mnist.dir/build.make CMakeFiles/mnist.dir/src/nn.cpp.i
-.PHONY : src/nn.cpp.i
+src/Matrix/matrix.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mnist.dir/build.make CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.i
+.PHONY : src/Matrix/matrix.cpp.i
 
-src/nn.s: src/nn.cpp.s
-.PHONY : src/nn.s
+src/Matrix/matrix.s: src/Matrix/matrix.cpp.s
+.PHONY : src/Matrix/matrix.s
 
 # target to generate assembly for a file
-src/nn.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/mnist.dir/build.make CMakeFiles/mnist.dir/src/nn.cpp.s
-.PHONY : src/nn.cpp.s
+src/Matrix/matrix.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mnist.dir/build.make CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.s
+.PHONY : src/Matrix/matrix.cpp.s
+
+src/main.o: src/main.cpp.o
+.PHONY : src/main.o
+
+# target to build an object file
+src/main.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mnist.dir/build.make CMakeFiles/mnist.dir/src/main.cpp.o
+.PHONY : src/main.cpp.o
+
+src/main.i: src/main.cpp.i
+.PHONY : src/main.i
+
+# target to preprocess a source file
+src/main.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mnist.dir/build.make CMakeFiles/mnist.dir/src/main.cpp.i
+.PHONY : src/main.cpp.i
+
+src/main.s: src/main.cpp.s
+.PHONY : src/main.s
+
+# target to generate assembly for a file
+src/main.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mnist.dir/build.make CMakeFiles/mnist.dir/src/main.cpp.s
+.PHONY : src/main.cpp.s
 
 # Help Target
 help:
@@ -201,12 +225,15 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... run"
 	@echo "... mnist"
-	@echo "... src/File_reader.o"
-	@echo "... src/File_reader.i"
-	@echo "... src/File_reader.s"
-	@echo "... src/nn.o"
-	@echo "... src/nn.i"
-	@echo "... src/nn.s"
+	@echo "... src/Filer.o"
+	@echo "... src/Filer.i"
+	@echo "... src/Filer.s"
+	@echo "... src/Matrix/matrix.o"
+	@echo "... src/Matrix/matrix.i"
+	@echo "... src/Matrix/matrix.s"
+	@echo "... src/main.o"
+	@echo "... src/main.i"
+	@echo "... src/main.s"
 .PHONY : help
 
 
@@ -218,7 +245,7 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	$(CMAKE_COMMAND) -P /home/awais/MNIST/build/CMakeFiles/VerifyGlobs.cmake
+	$(CMAKE_COMMAND) -P /home/awais/DEV/MNIST/build/CMakeFiles/VerifyGlobs.cmake
 	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

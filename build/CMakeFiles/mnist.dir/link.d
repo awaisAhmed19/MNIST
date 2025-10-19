@@ -2,8 +2,9 @@ bin/mnist: \
   /usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/../../../../lib/Scrt1.o \
   /usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/../../../../lib/crti.o \
   /usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/crtbeginS.o \
-  CMakeFiles/mnist.dir/src/File_reader.cpp.o \
-  CMakeFiles/mnist.dir/src/nn.cpp.o \
+  CMakeFiles/mnist.dir/src/Filer.cpp.o \
+  CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.o \
+  CMakeFiles/mnist.dir/src/main.cpp.o \
   /usr/lib/libraylib.so \
   /usr/lib/libpthread.a \
   /usr/lib/libdl.a \
@@ -50,9 +51,11 @@ bin/mnist: \
 
 /usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/crtbeginS.o:
 
-CMakeFiles/mnist.dir/src/File_reader.cpp.o:
+CMakeFiles/mnist.dir/src/Filer.cpp.o:
 
-CMakeFiles/mnist.dir/src/nn.cpp.o:
+CMakeFiles/mnist.dir/src/Matrix/matrix.cpp.o:
+
+CMakeFiles/mnist.dir/src/main.cpp.o:
 
 /usr/lib/libraylib.so:
 
