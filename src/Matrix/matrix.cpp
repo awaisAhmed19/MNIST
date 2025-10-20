@@ -2,9 +2,19 @@
 
 #define MAXCHAR 100;
 
-Matrix Matrix ::create(int row, int col) {
-    Matrix mat(row, col);
-    return mat;
+void Matrix ::create(int row, int col) {
+    assert(row > 0 && col > 0 && "Matrix dimensions must be positive!");
+    this->m_rows = row;
+    this->m_cols = col;
+    this->m_samples = new double*[this->m_rows];
+    for (int i = 0; i < this->m_rows; ++i) {
+        this->m_samples[i] = new double[this->m_cols];  //() does a zero initalization
+    }
+
+    assert(m_samples != nullptr && "m_samples not allocated!");
+    for (int i = 0; i < this->m_rows; ++i) {
+        assert(m_samples[i] != nullptr && "Row allocation failed!");
+    }
 }
 
 Matrix::Matrix(const Matrix& mat) {
@@ -18,6 +28,41 @@ Matrix::Matrix(const Matrix& mat) {
     }
 }
 
+double Matrix ::sigmoid(double input) { return 1.0 / (1 + exp(-1 * input)); }
+
+Matrix Matrix ::sigmoidPrime(const Matrix& mat) {
+    Matrix mat1;
+    mat1.fill(1);
+    Matrix sub = mat1 - mat;
+    Matrix mul = mat * sub;
+    return mul;
+}
+
+Matrix Matrix ::softmax(const Matrix& mat) {
+    double total = 0;
+    int r = 0, c = 0;
+    mat.getShape(r, c);
+    for (int i = 0; i < r; ++i) {
+        for (int j = 0; j < c; ++j) {
+            total += exp(mat.m_samples[i][j]);
+        }
+    }
+    Matrix temp;
+
+    for (int i = 0; i < r; ++i) {
+        for (int j = 0; j < c; ++j) {
+            total += exp(mat.m_samples[i][j]);
+        }
+    }
+    return mat;
+}
+void Matrix::validate() const {
+    assert(m_rows > 0 && m_cols > 0 && "Invalid matrix dimensions");
+    assert(m_samples != nullptr && "Matrix not allocated");
+    for (int i = 0; i < m_rows; ++i) {
+        assert(m_samples[i] != nullptr && "Matrix row pointer is null");
+    }
+}
 double uniform_distribution(double l, double h) {
     double diff = h - l;
     int scale = 10000;
@@ -26,6 +71,7 @@ double uniform_distribution(double l, double h) {
 }
 
 void Matrix ::fill(int num) {
+    this->validate();
     for (int i = 0; i < m_rows; ++i) {
         for (int j = 0; j < m_cols; ++j) {
             m_samples[i][j] = (double)num;
@@ -33,13 +79,14 @@ void Matrix ::fill(int num) {
     }
 }
 
-void Matrix::getShape(int& r, int& c) {
+void Matrix::getShape(int& r, int& c) const {
     r = (int)this->m_rows;
     c = (int)this->m_cols;
 }
 
 void Matrix ::print() {
-    std::cout << "Rows: " << this->m_rows << "Columns: " << this->m_cols << std::endl;
+    this->validate();
+    std::cout << "Rows: " << this->m_rows << " Columns: " << this->m_cols << std::endl;
     for (int i = 0; i < this->m_rows; ++i) {
         for (int j = 0; j < this->m_cols; ++j) {
             std::cout << " " << this->m_samples[i][j] << " ";
@@ -49,7 +96,9 @@ void Matrix ::print() {
 }
 
 Matrix Matrix ::copy() const {
-    Matrix c_mat(this->m_rows, this->m_cols);
+    this->validate();
+    Matrix c_mat;
+    c_mat.create(this->m_rows, this->m_cols);
     for (int i = 0; i < this->m_rows; ++i) {
         for (int j = 0; j < this->m_cols; ++j) {
             c_mat.m_samples[i][j] = this->m_samples[i][j];
@@ -59,6 +108,7 @@ Matrix Matrix ::copy() const {
 }
 
 void Matrix ::randomize(int n) {
+    this->validate();
     double min = -1.0 / sqrt(n);
     double max = 1.0 / sqrt(n);
 
@@ -69,6 +119,7 @@ void Matrix ::randomize(int n) {
     }
 }
 int Matrix ::argmax() {
+    this->validate();
     double max_score = 0;
     int max_ind = 0;
 
@@ -82,7 +133,9 @@ int Matrix ::argmax() {
 }
 
 Matrix Matrix::flatten(int axis) const {
-    Matrix mat(axis == 0 ? m_rows * m_cols : 1, axis == 0 ? 1 : m_rows * m_cols);
+    this->validate();
+    Matrix mat;
+    mat.create(axis == 0 ? m_rows * m_cols : 1, axis == 0 ? 1 : m_rows * m_cols);
     for (int i = 0; i < m_rows; ++i)
         for (int j = 0; j < m_cols; ++j) {
             int ind = i * m_cols + j;
@@ -95,11 +148,13 @@ Matrix Matrix::flatten(int axis) const {
 }
 
 Matrix Matrix ::operator*(const Matrix& mat) const {
+    this->validate();
     if (!check_dimensions(*this, mat)) {
         std::cerr << "invalid dimensions";
         exit(1);
     }
-    Matrix o_mat(this->m_rows, this->m_cols);
+    Matrix o_mat;
+    o_mat.create(this->m_rows, this->m_cols);
     for (int i = 0; i < this->m_rows; ++i) {
         for (int j = 0; j < this->m_cols; ++j) {
             o_mat.m_samples[i][j] = this->m_samples[i][j] * mat.m_samples[i][j];
@@ -108,11 +163,13 @@ Matrix Matrix ::operator*(const Matrix& mat) const {
     return o_mat;
 }
 Matrix Matrix ::operator+(const Matrix& mat) const {
+    this->validate();
     if (!check_dimensions(*this, mat)) {
         std::cerr << "invalid dimensions";
         exit(1);
     }
-    Matrix o_mat(this->m_rows, this->m_cols);
+    Matrix o_mat;
+    o_mat.create(this->m_rows, this->m_cols);
     for (int i = 0; i < this->m_rows; ++i) {
         for (int j = 0; j < this->m_cols; ++j) {
             o_mat.m_samples[i][j] = this->m_samples[i][j] + mat.m_samples[i][j];
@@ -121,11 +178,13 @@ Matrix Matrix ::operator+(const Matrix& mat) const {
     return o_mat;
 }
 Matrix Matrix ::operator-(const Matrix& mat) const {
+    this->validate();
     if (!check_dimensions(*this, mat)) {
         std::cerr << "invalid dimensions";
         exit(1);
     }
-    Matrix o_mat(this->m_rows, this->m_cols);
+    Matrix o_mat;
+    o_mat.create(this->m_rows, this->m_cols);
     for (int i = 0; i < this->m_rows; ++i) {
         for (int j = 0; j < this->m_cols; ++j) {
             o_mat.m_samples[i][j] = this->m_samples[i][j] - mat.m_samples[i][j];
@@ -134,6 +193,7 @@ Matrix Matrix ::operator-(const Matrix& mat) const {
     return o_mat;
 }
 Matrix& Matrix ::operator=(const Matrix& mat) {
+    this->validate();
     if (this == &mat) {
         return *this;
     }
@@ -156,6 +216,7 @@ Matrix& Matrix ::operator=(const Matrix& mat) {
 }
 
 Matrix Matrix ::apply(const std::function<double(double)>& func, const Matrix& mat) {
+    this->validate();
     Matrix o_mat = mat.copy();
     for (int i = 0; i < mat.m_rows; ++i) {
         for (int j = 0; j < mat.m_cols; ++j) {
@@ -165,12 +226,14 @@ Matrix Matrix ::apply(const std::function<double(double)>& func, const Matrix& m
     return o_mat;
 }
 Matrix Matrix ::dot(const Matrix& mat) {
+    this->validate();
     if (!(this->m_cols == mat.m_rows)) {
         std::cerr << "Dimension mistmatch dot:" << this->m_rows << " " << this->m_cols << " "
                   << mat.m_rows << " " << mat.m_cols;
         exit(1);
     }
-    Matrix o_mat(this->m_rows, mat.m_cols);
+    Matrix o_mat;
+    o_mat.create(this->m_rows, mat.m_cols);
     for (int i = 0; i < this->m_rows; ++i) {
         for (int j = 0; j < mat.m_cols; ++j) {
             o_mat.m_samples[i][j] = 0.0;
@@ -182,6 +245,7 @@ Matrix Matrix ::dot(const Matrix& mat) {
     return o_mat;
 }
 Matrix Matrix::scale(double n) {
+    this->validate();
     Matrix o_mat = this->copy();
     for (int i = 0; i < this->m_rows; ++i) {
         for (int j = 0; j < this->m_cols; ++j) {
@@ -191,6 +255,7 @@ Matrix Matrix::scale(double n) {
     return o_mat;
 }
 Matrix Matrix::addScalar(double n) {
+    this->validate();
     Matrix o_mat = this->copy();
     for (int i = 0; i < this->m_rows; ++i) {
         for (int j = 0; j < this->m_cols; ++j) {
@@ -200,7 +265,9 @@ Matrix Matrix::addScalar(double n) {
     return o_mat;
 }
 void Matrix::T() {
-    Matrix temp(this->m_cols, this->m_rows);
+    this->validate();
+    Matrix temp;
+    temp.create(this->m_cols, this->m_rows);
 
     for (int i = 0; i < this->m_rows; ++i) {
         for (int j = 0; j < this->m_cols; ++j) {

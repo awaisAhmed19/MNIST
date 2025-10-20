@@ -5,18 +5,22 @@
 #include <string>
 #include <vector>
 
+#include "../src/Matrix/matrix.h"
 class Matrix;
+
 class Filer {
-    std::vector<int> m_labels;
-    std::vector<std::vector<int>> m_images;
     std::string m_filename;
 
    public:
+    struct Img {
+        Matrix img_data;
+        int label;
+    };
+    std::vector<Img> Imgs;
     Filer(const std::string& fname) : m_filename(fname) {}
-    void get_data();
+    std::vector<Img>& get_data();
 
+    void print();
     static Matrix load_matrix(const std::string file_name);
     static void save_matrix(Matrix& mat, const std::string file_name);
-    std::vector<std::vector<int>> get_image_vec() { return m_images; }
-    std::vector<int> get_label_vec() { return m_labels; }
 };
