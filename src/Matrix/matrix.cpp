@@ -28,16 +28,6 @@ Matrix::Matrix(const Matrix& mat) {
     }
 }
 
-double Matrix ::sigmoid(double input) { return 1.0 / (1 + exp(-1 * input)); }
-
-Matrix Matrix ::sigmoidPrime(const Matrix& mat) {
-    Matrix mat1;
-    mat1.fill(1);
-    Matrix sub = mat1 - mat;
-    Matrix mul = mat * sub;
-    return mul;
-}
-
 Matrix Matrix ::softmax(const Matrix& mat) {
     double total = 0;
     int r = 0, c = 0;
@@ -215,16 +205,18 @@ Matrix& Matrix ::operator=(const Matrix& mat) {
     return *this;
 }
 
-Matrix Matrix ::apply(const std::function<double(double)>& func, const Matrix& mat) {
-    this->validate();
-    Matrix o_mat = mat.copy();
-    for (int i = 0; i < mat.m_rows; ++i) {
-        for (int j = 0; j < mat.m_cols; ++j) {
-            o_mat.m_samples[i][j] = func(mat.m_samples[i][j]);
+Matrix Matrix::apply(const std::function<double(double)>& func) {
+    this->validate();  // optional, keeps your safety checks
+    Matrix o_mat;
+    o_mat.create(this->m_rows, this->m_cols);
+    for (int i = 0; i < this->m_rows; ++i) {
+        for (int j = 0; j < this->m_cols; ++j) {
+            o_mat.m_samples[i][j] = func(this->m_samples[i][j]);
         }
     }
     return o_mat;
 }
+
 Matrix Matrix ::dot(const Matrix& mat) {
     this->validate();
     if (!(this->m_cols == mat.m_rows)) {

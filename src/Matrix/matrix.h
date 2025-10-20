@@ -41,7 +41,7 @@ class Matrix {
         m_samples[r][c] = val;
     }
     Matrix dot(const Matrix& m2);
-    Matrix apply(const std::function<double(double)>& func, const Matrix& mat);
+    Matrix apply(const std::function<double(double)>& func);
     Matrix scale(double n);
     Matrix addScalar(double n);
     void T();
@@ -49,8 +49,16 @@ class Matrix {
     void create(int rows, int cols);
     void fill(int n);
     void print();
-    double sigmoid(double input);
-    Matrix sigmoidPrime(const Matrix& mat);
+    static double sigmoid(double input) { return 1.0 / (1 + exp(-1 * input)); }
+
+    static Matrix sigmoidPrime(const Matrix& mat) {
+        Matrix sig = Matrix(mat);
+        sig.apply(Matrix::sigmoid);
+        Matrix ones;
+        ones.create(mat.m_rows, mat.m_cols);
+        ones.fill(1.0);
+        return sig * (ones - sig);
+    }
     Matrix softmax(const Matrix& mat);
     Matrix copy() const;
     void save(std::string file_name);
