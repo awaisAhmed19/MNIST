@@ -57,19 +57,49 @@ Open browser at: http://localhost:3000 (or server port)
 
 #### Project Structure
 ```
+```
+```
 MNIST/
-├── backend/            # C++ neural network source
-│   ├── main.cpp
-│   ├── neural_net.cpp
-│   ├── neural_net.h
-│   └── mnist_utils.h
-├── frontend/           # HTML + JS Canvas UI
-│   ├── index.html
-│   ├── script.js
-│   └── style.css
-├── data/               # MNIST dataset (raw or preprocessed)
-├── pretrained/         # Pre-trained MNIST weights
-└── README.md
+├── backend/                  # C++ neural network backend
+│   ├── CMakeLists.txt        # Build instructions for backend
+│   ├── main.cpp              # Entry point: training + evaluation
+│   ├── NN/                   # Neural network implementation
+│   │   ├── neural_network.cpp
+│   │   └── neural_network.h
+│   ├── Matrix/               # Matrix class implementation
+│   │   ├── matrix.cpp
+│   │   └── matrix.h
+│   ├── Filer.cpp             # File I/O utilities (load/save CSV & descriptors)
+│   ├── Filer.h
+│   └── utils.h               # Any helper functions (optional)
+│
+├── frontend/                 # Optional: web-based UI (MERN stack)
+│   ├── client/               # React app
+│   │   ├── public/
+│   │   │   └── index.html
+│   │   └── src/
+│   │       ├── App.js
+│   │       ├── index.js
+│   │       └── components/
+│   └── server/               # Node/Express server
+│       ├── server.js
+│       ├── routes/
+│       └── models/
+│
+├── data/                     # MNIST datasets
+│   ├── train.csv
+│   └── test.csv
+│
+├── pretrained/               # Pre-trained network weights
+│   ├── hidden.csv
+│   └── output.csv
+│
+├── build/                    # CMake build folder (auto-generated)
+├── README.md
+├── LICENSE
+├── .gitignore
+└── build.sh                  # Script to build and run backend
+
 ```
 
 ### Technologies
