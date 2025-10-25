@@ -45,7 +45,7 @@ void Train(NeuralNetwork* net, Matrix& X, Matrix& Y) {
 
 void Train_batch_imgs(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int batch_size) {
     for (int i = 0; i < batch_size; i++) {
-        if (i % 100 == 0) std::cout << "Image number: " << i << std::endl;
+        // if (i % 100 == 0) std::cout << "Image number: " << i << std::endl;
 
         Filer::Img curr = dataset[i];
         Matrix Image_vec = curr.img_data.flatten(0);
