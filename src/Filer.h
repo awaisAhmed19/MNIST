@@ -21,8 +21,9 @@ class Filer {
     Filer(const std::string& fname) : m_filename(fname) {}
     Filer() {}
 
-    std::vector<Filer::Img>& get_data(const std::string& filename, int nums);
+    std::vector<Filer::Img> get_data(const std::string& filename, int nums);
     void print();
+
     static void save_matrix(const Matrix& mat, const std::string file_name) {
         std::ofstream file(file_name);
 
@@ -46,6 +47,7 @@ class Filer {
         file.close();
         std::cout << "Matrix saved in:" << file_name << std::endl;
     }
+
     static Matrix load_matrix(const std::string file_name) {
         std::ifstream file(file_name);
 

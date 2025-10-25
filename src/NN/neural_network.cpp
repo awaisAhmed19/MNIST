@@ -45,7 +45,7 @@ void Train(NeuralNetwork* net, Matrix& X, Matrix& Y) {
 
 void Train_batch_imgs(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int batch_size) {
     for (int i = 0; i < batch_size; i++) {
-        if (i % 100 == 0) std::cout << "Image number: " << i;
+        if (i % 100 == 0) std::cout << "Image number: " << i << std::endl;
 
         Filer::Img curr = dataset[i];
         Matrix Image_vec = curr.img_data.flatten(0);
@@ -87,22 +87,26 @@ Matrix predict(NeuralNetwork* net, Matrix& input) {
 void save(const NeuralNetwork* net, const std::string& dir_name) {
     std::filesystem::path dir = dir_name;
     try {
-        std::filesystem::create_directories(dir);
+        std::filesystem::create_directories(dir);  // <-- FIXED
         std::ofstream desc(dir / "descriptor.txt");
         if (!desc.is_open()) {
             std::cerr << "Error: failed to open descriptor file.\n";
             return;
         }
+
         desc << net->input << "\n";
         desc << net->hidden << "\n";
         desc << net->output << "\n";
         desc << net->learningRate << "\n";
         desc.close();
+
         auto hidden_path = dir / "hidden.csv";
         auto output_path = dir / "output.csv";
 
         Filer::save_matrix(net->hiddenWeights, hidden_path.string());
         Filer::save_matrix(net->outputWeights, output_path.string());
+
+        std::cout << "Network saved successfully in: " << dir << "\n";
     } catch (const std::filesystem::filesystem_error& e) {
         std::cerr << "Error saving network: " << e.what() << std::endl;
     }
@@ -116,7 +120,6 @@ NeuralNetwork* load(const std::string& dir_name) {
         return nullptr;
     }
 
-    NeuralNetwork* net = nullptr;
     try {
         std::ifstream desc(dir / "descriptor.txt");
         if (!desc.is_open()) {
@@ -128,19 +131,22 @@ NeuralNetwork* load(const std::string& dir_name) {
         double lr;
         desc >> input >> hidden >> output >> lr;
         desc.close();
+
+        NeuralNetwork* net = new NeuralNetwork(input, hidden, output, lr);
+
         auto hidden_path = dir / "hidden.csv";
         auto output_path = dir / "output.csv";
 
         net->hiddenWeights = Filer::load_matrix(hidden_path.string());
         net->outputWeights = Filer::load_matrix(output_path.string());
+
         std::cout << " Successfully loaded network from '" << dir_name << "'\n";
+        return net;
+
     } catch (const std::exception& e) {
         std::cerr << "Error loading network: " << e.what() << std::endl;
-        if (net) delete net;
         return nullptr;
     }
-
-    return net;
 }
 void print(const NeuralNetwork* net) {
     std::cout << "# of Inputs: " << net->input << "\n";

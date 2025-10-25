@@ -8,18 +8,37 @@ project(MNIST LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Output directories
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_BUILD_TYPE Debug)
+add_compile_options(-g -O0)
+
+# =====================
+# Output Directories
+# =====================
+# Put the compiled binary in the project root /bin instead of /build/bin
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
 # =====================
 # Source Files
 # =====================
-file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS src/*.cpp src/*.h src/Matrix/*.cpp src/Matrix/*.h)
+file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
+    src/*.cpp
+    src/*.h
+    src/Matrix/*.cpp
+    src/Matrix/*.h
+    src/NN/*.cpp
+    src/NN/*.h
+)
 
 add_executable(mnist ${SRC_FILES})
-
 target_include_directories(mnist PRIVATE ${PROJECT_SOURCE_DIR}/src)
+
+# =====================
+# Global Definitions
+# =====================
+# Let the program know where the project root is (for loading files like data/train.csv)
+target_compile_definitions(mnist PRIVATE PROJECT_ROOT=\"${PROJECT_SOURCE_DIR}\")
+
 
 # =====================
 # CUDA Mode
@@ -29,16 +48,13 @@ option(USE_CUDA "Enable CUDA support" OFF)
 if (USE_CUDA)
     enable_language(CUDA)
     find_package(CUDA REQUIRED)
-    message(STATUS " CUDA support enabled")
+    message(STATUS "CUDA support enabled")
 
-    # Define CUDA-specific flag for conditional compilation
     target_compile_definitions(mnist PRIVATE USE_CUDA)
-    
-    # Add CUDA source files if you have them
+
     file(GLOB_RECURSE CUDA_SRC src/*.cu)
     target_sources(mnist PRIVATE ${CUDA_SRC})
 
-    # Link CUDA runtime libraries
     target_link_libraries(mnist PRIVATE CUDA::cudart)
 endif()
 
@@ -56,6 +72,6 @@ target_link_libraries(mnist PRIVATE raylib m pthread dl rt X11)
 add_custom_target(run
     COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/mnist
     DEPENDS mnist
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
 )
 
