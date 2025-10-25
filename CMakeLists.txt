@@ -58,13 +58,21 @@ if (USE_CUDA)
     target_link_libraries(mnist PRIVATE CUDA::cudart)
 endif()
 
+
 # =====================
 # Raylib Integration
 # =====================
 find_package(raylib REQUIRED)
 
-# Link Raylib + system deps
-target_link_libraries(mnist PRIVATE raylib m pthread dl rt X11)
+# Platform-specific system libraries
+if(APPLE)
+    # macOS: m, pthread are available; dl/rt/X11 not needed
+    target_link_libraries(mnist PRIVATE raylib m pthread)
+elseif(UNIX)
+    # Linux
+    target_link_libraries(mnist PRIVATE raylib m pthread dl rt X11)
+endif()
+
 
 # =====================
 # Run target (for dev convenience)
