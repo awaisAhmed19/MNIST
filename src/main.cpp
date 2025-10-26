@@ -13,8 +13,11 @@ namespace fs = std::filesystem;
 constexpr int TRAIN_SAMPLES = 8000;
 constexpr int TEST_SAMPLES = 2000;
 constexpr int EVAL_SAMPLES = 2000;
-constexpr int EPOCHS = 50;
-constexpr double LEARNING_RATE = 0.16;
+constexpr int EPOCHS = 25;
+constexpr double LEARNING_RATE = 0.01;
+constexpr int INPUT_SIZE = 784;
+constexpr int OUTPUT_SIZE = 10;
+constexpr int HIDDEN_SIZE = 1000;
 
 // Ensure a file exists before trying to use it
 inline void check_file_exists(const std::string& path) {
@@ -44,7 +47,7 @@ int main(int argc, char* argv[]) {
     auto val_data = file.get_data(val_csv, TEST_SAMPLES);
     std::cout << "Loaded " << val_data.size() << " validation samples." << std::endl;
 
-    auto net = std::make_unique<NeuralNetwork>(784, 300, 10, LEARNING_RATE);
+    auto net = std::make_unique<NeuralNetwork>(INPUT_SIZE, HIDDEN_SIZE, OUTPUT_SIZE, LEARNING_RATE);
 
     double best_val_score = 0.0;
 
