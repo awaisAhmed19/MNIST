@@ -6,13 +6,59 @@ echo "Starting MNIST build script..."
 OS_TYPE="$(uname)"
 echo "Detected OS: $OS_TYPE"
 
+
 install_deps_linux() {
   echo "Checking dependencies on Linux..."
-  for pkg in g++ cmake make libglfw3-dev libraylib-dev; do
-    if ! dpkg -s $pkg &>/dev/null; then
+
+  # Detect distro
+  if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    DISTRO=$ID
+  else
+    echo "Can't detect distro. /etc/os-release not found."
+    exit 1
+  fi
+
+  # Define dependencies
+  DEPS=(g++ cmake make libglfw3-dev libraylib-dev)
+
+  # Pick installer based on distro
+  case "$DISTRO" in
+    ubuntu|debian)
+      PKG_CHECK="dpkg -s"
+      INSTALL_CMD="sudo apt-get install -y"
+      UPDATE_CMD="sudo apt-get update"
+      ;;
+    arch|manjaro)
+      PKG_CHECK="pacman -Qi"
+      INSTALL_CMD="sudo pacman -S --noconfirm"
+      UPDATE_CMD="sudo pacman -Sy"
+      # Replace package names for Arch equivalents
+      DEPS=(gcc cmake make glfw raylib)
+      ;;
+    fedora)
+      PKG_CHECK="rpm -q"
+      INSTALL_CMD="sudo dnf install -y"
+      UPDATE_CMD="sudo dnf check-update"
+      DEPS=(gcc-c++ cmake make glfw-devel raylib-devel)
+      ;;
+    *)
+      echo "Unsupported distro: $DISTRO"
+      return 1
+      ;;
+  esac
+
+  # Update package list once
+  echo "Updating package database..."
+  $UPDATE_CMD
+
+  # Install missing packages
+  for pkg in "${DEPS[@]}"; do
+    if ! $PKG_CHECK "$pkg" &>/dev/null; then
       echo "Installing $pkg..."
-      sudo apt-get update
-      sudo apt-get install -y $pkg
+      $INSTALL_CMD "$pkg"
+    else
+      echo "$pkg already installed."
     fi
   done
 }
@@ -42,6 +88,12 @@ Darwin*) install_deps_macos ;;
   ;;
 esac
 
+DATA_DIR="data"
+if [ ! -d "$DATA_DIR" ] && [ -f "data.zip" ]; then
+  echo "Unzipping the dataset..."
+  unzip -q data.zip -d .
+fi
+: << 'END'
 BUILD_DIR="build"
 if [ ! -d "$BUILD_DIR" ]; then
   echo "Build directory not found. Creating..."
