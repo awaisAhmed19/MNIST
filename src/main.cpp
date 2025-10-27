@@ -29,8 +29,8 @@ inline void check_file_exists(const std::string& path) {
 
 int main(int argc, char* argv[]) {
     const std::string project_root = PROJECT_ROOT;
-    const std::string train_csv = project_root + "/data/train_final.csv";
-    const std::string val_csv = project_root + "/data/val_final.csv";
+    const std::string train_csv = project_root + "/data/mnist60k/train_final.csv";
+    const std::string val_csv = project_root + "/data/mnist60k/val_final.csv";
     const std::string model_path = project_root + "/testing";
 
     check_file_exists(train_csv);

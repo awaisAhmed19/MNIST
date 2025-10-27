@@ -6,7 +6,6 @@ echo "Starting MNIST build script..."
 OS_TYPE="$(uname)"
 echo "Detected OS: $OS_TYPE"
 
-
 install_deps_linux() {
   echo "Checking dependencies on Linux..."
 
@@ -24,28 +23,28 @@ install_deps_linux() {
 
   # Pick installer based on distro
   case "$DISTRO" in
-    ubuntu|debian)
-      PKG_CHECK="dpkg -s"
-      INSTALL_CMD="sudo apt-get install -y"
-      UPDATE_CMD="sudo apt-get update"
-      ;;
-    arch|manjaro)
-      PKG_CHECK="pacman -Qi"
-      INSTALL_CMD="sudo pacman -S --noconfirm"
-      UPDATE_CMD="sudo pacman -Sy"
-      # Replace package names for Arch equivalents
-      DEPS=(gcc cmake make glfw raylib)
-      ;;
-    fedora)
-      PKG_CHECK="rpm -q"
-      INSTALL_CMD="sudo dnf install -y"
-      UPDATE_CMD="sudo dnf check-update"
-      DEPS=(gcc-c++ cmake make glfw-devel raylib-devel)
-      ;;
-    *)
-      echo "Unsupported distro: $DISTRO"
-      return 1
-      ;;
+  ubuntu | debian)
+    PKG_CHECK="dpkg -s"
+    INSTALL_CMD="sudo apt-get install -y"
+    UPDATE_CMD="sudo apt-get update"
+    ;;
+  arch | manjaro)
+    PKG_CHECK="pacman -Qi"
+    INSTALL_CMD="sudo pacman -S --noconfirm"
+    UPDATE_CMD="sudo pacman -Sy"
+    # Replace package names for Arch equivalents
+    DEPS=(gcc cmake make glfw raylib)
+    ;;
+  fedora)
+    PKG_CHECK="rpm -q"
+    INSTALL_CMD="sudo dnf install -y"
+    UPDATE_CMD="sudo dnf check-update"
+    DEPS=(gcc-c++ cmake make glfw-devel raylib-devel)
+    ;;
+  *)
+    echo "Unsupported distro: $DISTRO"
+    return 1
+    ;;
   esac
 
   # Update package list once
@@ -93,7 +92,7 @@ if [ ! -d "$DATA_DIR" ] && [ -f "data.zip" ]; then
   echo "Unzipping the dataset..."
   unzip -q data.zip -d .
 fi
-: << 'END'
+#: << 'END'
 BUILD_DIR="build"
 if [ ! -d "$BUILD_DIR" ]; then
   echo "Build directory not found. Creating..."
