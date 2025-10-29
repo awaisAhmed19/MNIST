@@ -43,7 +43,7 @@ std::vector<Filer::Img> Filer::get_data(const std::string& filename, int nums) {
 
         for (int r = 0; r < 28; ++r) {
             for (int c = 0; c < 28; ++c) {
-                img.img_data.m_samples[r][c] = static_cast<float>(image[r * 28 + c] / 255.0f);
+                img.img_data.matrix[r][c] = static_cast<float>(image[r * 28 + c] / 255.0f);
             }
         }
 

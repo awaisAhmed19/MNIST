@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "../src/Matrix/matrix.h"
+template <typename Tp>
 class Matrix;
 
 class Filer {
@@ -13,7 +14,7 @@ class Filer {
 
    public:
     struct Img {
-        Matrix img_data;
+        Matrix<double> img_data;
         int label;
         Img() : img_data(28, 28), label(0) {}
     };
@@ -24,7 +25,7 @@ class Filer {
     std::vector<Filer::Img> get_data(const std::string& filename, int nums);
     void print();
 
-    static void save_matrix(const Matrix& mat, const std::string file_name) {
+    static void save_matrix(const Matrix<double>& mat, const std::string file_name) {
         std::ofstream file(file_name);
 
         if (!file.is_open()) {
@@ -32,14 +33,12 @@ class Filer {
             return;
         }
 
-        int rows = mat.m_rows;
-        int cols = mat.m_cols;
-        file << rows << " " << cols << std::endl;
+        file << mat.row() << " " << mat.col() << std::endl;
 
-        for (int i = 0; i < rows; ++i) {
-            for (int j = 0; j < cols; ++j) {
-                file << mat.m_samples[i][j];
-                if (j < cols - 1) file << " ";
+        for (int i = 0; i < mat.row(); ++i) {
+            for (int j = 0; j < mat.col(); ++j) {
+                file << mat.matrix[i][j];
+                if (j < mat.col() - 1) file << " ";
             }
             file << std::endl;
         }
@@ -48,7 +47,7 @@ class Filer {
         std::cout << "Matrix saved in:" << file_name << std::endl;
     }
 
-    static Matrix load_matrix(const std::string file_name) {
+    static Matrix<double> load_matrix(const std::string file_name) {
         std::ifstream file(file_name);
 
         if (!file.is_open()) {
@@ -59,11 +58,11 @@ class Filer {
 
         file >> rows >> cols;
 
-        Matrix mat(rows, cols);
+        Matrix<double> mat(rows, cols);
 
-        for (int i = 0; i < mat.m_rows; ++i) {
-            for (int j = 0; j < mat.m_cols; ++j) {
-                if (!(file >> mat.m_samples[i][j])) {
+        for (int i = 0; i < mat.row(); ++i) {
+            for (int j = 0; j < mat.col(); ++j) {
+                if (!(file >> mat.matrix[i][j])) {
                     std::cerr << "Error: malformed matrix file " << file_name << std::endl;
                     exit(1);
                 }

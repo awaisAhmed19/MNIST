@@ -13,11 +13,11 @@ namespace fs = std::filesystem;
 constexpr int TRAIN_SAMPLES = 8000;
 constexpr int TEST_SAMPLES = 2000;
 constexpr int EVAL_SAMPLES = 2000;
-constexpr int EPOCHS = 25;
-constexpr double LEARNING_RATE = 0.01;
+constexpr int EPOCHS = 5;
+constexpr double LEARNING_RATE = 0.5;
 constexpr int INPUT_SIZE = 784;
 constexpr int OUTPUT_SIZE = 10;
-constexpr int HIDDEN_SIZE = 1000;
+constexpr int HIDDEN_SIZE = 512;
 
 // Ensure a file exists before trying to use it
 inline void check_file_exists(const std::string& path) {

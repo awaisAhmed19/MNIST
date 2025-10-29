@@ -10,8 +10,8 @@ NeuralNetwork* Create(int input, int hidden, int output, double lr) {
     net->hidden = hidden;
     net->learningRate = lr;
 
-    Matrix hidden_layer(input, output);
-    Matrix output_layer(input, output);
+    Matrix<double> hidden_layer(input, output);
+    Matrix<double> output_layer(input, output);
     hidden_layer.randomize(hidden);
     output_layer.randomize(output);
     net->hiddenWeights = hidden_layer;
@@ -20,26 +20,27 @@ NeuralNetwork* Create(int input, int hidden, int output, double lr) {
     return net;
 }
 
-void Train(NeuralNetwork* net, Matrix& X, Matrix& Y) {
+void Train(NeuralNetwork* net, Matrix<double>& X, Matrix<double>& Y) {
     // feed forward
-    Matrix hid_in = net->hiddenWeights.dot(X);
-    Matrix hid_out = hid_in.apply(Matrix::sigmoid);
-    Matrix final_in = net->outputWeights.dot(hid_out);
-    Matrix final_out = final_in.apply(Matrix::sigmoid);
+    Matrix<double> hid_in = net->hiddenWeights.dot(X);
+    Matrix<double> hid_out = hid_in.apply(Matrix<double>::sigmoid);
+    Matrix<double> final_in = net->outputWeights.dot(hid_out);
+    Matrix<double> final_out = final_in.apply(Matrix<double>::sigmoid);
 
     // err
-    Matrix output_err = Y - final_out;
+    Matrix<double> output_err = Y - final_out;
 
-    Matrix output_grad = output_err * Matrix::sigmoidPrime(final_out);  // elementwise
-    Matrix hid_out_T = hid_out.T();
-    Matrix d_outputWeights = output_grad.dot(hid_out_T).scale(net->learningRate);
+    Matrix<double> output_grad =
+        output_err * Matrix<double>::sigmoidPrime(final_out);  // elementwise
+    Matrix<double> hid_out_T = hid_out.T();
+    Matrix<double> d_outputWeights = output_grad.dot(hid_out_T).scale(net->learningRate);
     net->outputWeights = net->outputWeights + d_outputWeights;
 
-    Matrix outputWeights_T = net->outputWeights.T();
-    Matrix hidden_err = outputWeights_T.dot(output_grad);
-    Matrix hidden_grad = hidden_err * Matrix::sigmoidPrime(hid_out);  // elementwise
-    Matrix X_T = X.T();
-    Matrix d_hiddenWeights = hidden_grad.dot(X_T).scale(net->learningRate);
+    Matrix<double> outputWeights_T = net->outputWeights.T();
+    Matrix<double> hidden_err = outputWeights_T.dot(output_grad);
+    Matrix<double> hidden_grad = hidden_err * Matrix<double>::sigmoidPrime(hid_out);  // elementwise
+    Matrix<double> X_T = X.T();
+    Matrix<double> d_hiddenWeights = hidden_grad.dot(X_T).scale(net->learningRate);
     net->hiddenWeights = net->hiddenWeights + d_hiddenWeights;
 }
 
@@ -48,16 +49,16 @@ void Train_batch_imgs(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int 
         // if (i % 100 == 0) std::cout << "Image number: " << i << std::endl;
 
         Filer::Img curr = dataset[i];
-        Matrix Image_vec = curr.img_data.flatten(0);
-        Matrix output(10, 1);
-        output.m_samples[curr.label][0] = 1;
+        Matrix<double> Image_vec = curr.img_data.flatten(0);
+        Matrix<double> output(10, 1);
+        output.matrix[curr.label][0] = 1;
         Train(net, Image_vec, output);
     }
 }
 
-Matrix predict_img(NeuralNetwork* net, Filer::Img& img) {
-    Matrix Image_vec = img.img_data.flatten(0);
-    Matrix Res = predict(net, Image_vec);
+Matrix<double> predict_img(NeuralNetwork* net, Filer::Img& img) {
+    Matrix<double> Image_vec = img.img_data.flatten(0);
+    Matrix<double> Res = predict(net, Image_vec);
     return Res;
 }
 
@@ -65,7 +66,7 @@ double evaluate_accuracy(NeuralNetwork* net, std::vector<Filer::Img>& dataset, i
     int correct = 0;
 
     for (int i = 0; i < n; ++i) {
-        Matrix prediction = predict_img(net, dataset[i]);
+        Matrix<double> prediction = predict_img(net, dataset[i]);
         if (prediction.argmax() == dataset[i].label) {
             correct++;
         }
@@ -73,14 +74,14 @@ double evaluate_accuracy(NeuralNetwork* net, std::vector<Filer::Img>& dataset, i
     return 1.0 * correct / n;
 }
 
-Matrix predict(NeuralNetwork* net, Matrix& input) {
-    Matrix hidden_inputs = net->hiddenWeights.dot(input);
-    Matrix hidden_outputs = hidden_inputs.apply(Matrix::sigmoid);
+Matrix<double> predict(NeuralNetwork* net, Matrix<double>& input) {
+    Matrix<double> hidden_inputs = net->hiddenWeights.dot(input);
+    Matrix<double> hidden_outputs = hidden_inputs.apply(Matrix<double>::sigmoid);
 
-    Matrix final_inputs = net->outputWeights.dot(hidden_outputs);
-    Matrix final_outputs = final_inputs.apply(Matrix::sigmoid);
+    Matrix<double> final_inputs = net->outputWeights.dot(hidden_outputs);
+    Matrix<double> final_outputs = final_inputs.apply(Matrix<double>::sigmoid);
 
-    Matrix Res = Matrix::softmax(final_outputs);
+    Matrix<double> Res = Matrix<double>::softmax(final_outputs);
     return Res;
 }
 
