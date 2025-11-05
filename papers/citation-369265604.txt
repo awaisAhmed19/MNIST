@@ -1,0 +1,1 @@
+Shao, Haijian & Ma, Edwin & Zhu, Ming & Deng, Xing & Zhai, Shengjie. (2023). MNIST Handwritten Digit Classification Based on Convolutional Neural Network with Hyperparameter Optimization. Intelligent Automation & Soft Computing. 36. 3595. 10.32604/iasc.2023.036323. 

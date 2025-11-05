@@ -17,7 +17,7 @@ constexpr int EPOCHS = 5;
 constexpr double LEARNING_RATE = 0.5;
 constexpr int INPUT_SIZE = 784;
 constexpr int OUTPUT_SIZE = 10;
-constexpr int HIDDEN_SIZE = 512;
+constexpr int HIDDEN_SIZE = 800;
 
 // Ensure a file exists before trying to use it
 inline void check_file_exists(const std::string& path) {
