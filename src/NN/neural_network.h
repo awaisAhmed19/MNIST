@@ -1,25 +1,25 @@
 #pragma once
+#include <vector>
+
 #include "../Filer.h"
 #include "../Matrix/matrix.h"
 
 struct NeuralNetwork {
-    int input;
-    int hidden;
-    int output;
+    std::vector<int> layers;
+    std::vector<Matrix<double>> weights;
+    std::vector<Matrix<double>> biases;
     double learningRate;
-    Matrix<double> hiddenWeights;
-    Matrix<double> outputWeights;
 
-    NeuralNetwork(int inputSize, int hiddenSize, int outputSize, double lr)
-        : input(inputSize),
-          hidden(hiddenSize),
-          output(outputSize),
-          learningRate(lr),
-          hiddenWeights(hiddenSize, inputSize),
-          outputWeights(outputSize, hiddenSize) {
-        // initialize with small random values
-        randomize(hiddenWeights);
-        randomize(outputWeights);
+    NeuralNetwork(const std::vector<int>& layerSize, double lr)
+        : layers(layerSize), learningRate(lr) {
+        for (int i = 0; i < layers.size() - 1; i++) {
+            Matrix<double> w(layers[i + 1], layers[i]);
+            Matrix<double> b(layers[i + 1], 1);
+            randomize(w);
+            randomize(b);
+            weights.push_back(w);
+            biases.push_back(b);
+        }
     }
 
    private:

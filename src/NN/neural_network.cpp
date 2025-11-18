@@ -1,57 +1,87 @@
 #include "neural_network.h"
 
+#include <algorithm>
+#include <cstddef>
 #include <filesystem>
+#include <random>
 #include <string>
+#include <vector>
 
-NeuralNetwork* Create(int input, int hidden, int output, double lr) {
-    NeuralNetwork* net;
-    net->input = input;
-    net->output = output;
-    net->hidden = hidden;
-    net->learningRate = lr;
-
-    Matrix<double> hidden_layer(input, output);
-    Matrix<double> output_layer(input, output);
-    hidden_layer.randomize(hidden);
-    output_layer.randomize(output);
-    net->hiddenWeights = hidden_layer;
-    net->outputWeights = output_layer;
-
-    return net;
+NeuralNetwork* Create(const std::vector<int>& layers, double lr) {
+    return new NeuralNetwork(layers, lr);
 }
 
 void Train(NeuralNetwork* net, Matrix<double>& X, Matrix<double>& Y) {
-    // feed forward
-    Matrix<double> hid_in = net->hiddenWeights.dot(X);
-    Matrix<double> hid_out = hid_in.apply(Matrix<double>::sigmoid);
-    Matrix<double> final_in = net->outputWeights.dot(hid_out);
-    Matrix<double> final_out = final_in.apply(Matrix<double>::sigmoid);
+    int L = net->layers.size() - 1;
 
-    // err
-    Matrix<double> output_err = Y - final_out;
+    std::vector<Matrix<double>> activation;
+    std::vector<Matrix<double>> zvals;
+    activation.push_back(X);
 
-    Matrix<double> output_grad =
-        output_err * Matrix<double>::sigmoidPrime(final_out);  // elementwise
-    Matrix<double> hid_out_T = hid_out.T();
-    Matrix<double> d_outputWeights = output_grad.dot(hid_out_T).scale(net->learningRate);
-    net->outputWeights = net->outputWeights + d_outputWeights;
+    Matrix<double> a = X;
 
-    Matrix<double> outputWeights_T = net->outputWeights.T();
-    Matrix<double> hidden_err = outputWeights_T.dot(output_grad);
-    Matrix<double> hidden_grad = hidden_err * Matrix<double>::sigmoidPrime(hid_out);  // elementwise
-    Matrix<double> X_T = X.T();
-    Matrix<double> d_hiddenWeights = hidden_grad.dot(X_T).scale(net->learningRate);
-    net->hiddenWeights = net->hiddenWeights + d_hiddenWeights;
+    // Forward pass
+    for (int i = 0; i < L; i++) {
+        Matrix<double> z = net->weights[i].dot(a) + net->biases[i];
+        Matrix<double> a_next = z.apply(Matrix<double>::sigmoid);
+
+        zvals.push_back(z);
+        activation.push_back(a_next);
+
+        a = a_next;
+    }
+
+    std::vector<Matrix<double>> grad;
+    std::vector<Matrix<double>> deltaW;
+    std::vector<Matrix<double>> deltaB;
+
+    grad.reserve(L);
+    deltaW.reserve(L);
+    deltaB.reserve(L);
+
+    for (int i = 0; i < L; ++i) {
+        grad.emplace_back(net->layers[i + 1], 1);
+        deltaW.emplace_back(net->layers[i + 1], net->layers[i]);
+        deltaB.emplace_back(net->layers[i + 1], 1);
+    }
+
+    // Output layer
+    Matrix<double> error = Y - activation[L];
+    grad[L - 1] = error * Matrix<double>::sigmoidPrime(activation[L]);
+
+    deltaW[L - 1] = grad[L - 1].dot(activation[L - 1].T()).scale(net->learningRate);
+    deltaB[L - 1] = grad[L - 1].scale(net->learningRate);
+
+    // Hidden layers
+    for (int i = L - 2; i >= 0; i--) {
+        Matrix<double> wT = net->weights[i + 1].T();
+        Matrix<double> err = wT.dot(grad[i + 1]);
+
+        Matrix<double> g = err * Matrix<double>::sigmoidPrime(activation[i + 1]);
+
+        grad[i] = g;
+
+        deltaW[i] = g.dot(activation[i].T()).scale(net->learningRate);
+        deltaB[i] = g.scale(net->learningRate);
+    }
+
+    // Update
+    for (int i = 0; i < L; i++) {
+        net->weights[i] = net->weights[i] + deltaW[i];
+        net->biases[i] = net->biases[i] + deltaB[i];
+    }
 }
 
 void Train_batch_imgs(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int batch_size) {
-    for (int i = 0; i < batch_size; i++) {
-        // if (i % 100 == 0) std::cout << "Image number: " << i << std::endl;
+    int limit = std::min(batch_size, (int)dataset.size());
 
-        Filer::Img curr = dataset[i];
+    for (int i = 0; i < limit; i++) {
+        Filer::Img& curr = dataset[i];
         Matrix<double> Image_vec = curr.img_data.flatten(0);
+
         Matrix<double> output(10, 1);
         output.matrix[curr.label][0] = 1;
+
         Train(net, Image_vec, output);
     }
 }
@@ -75,37 +105,43 @@ double evaluate_accuracy(NeuralNetwork* net, std::vector<Filer::Img>& dataset, i
 }
 
 Matrix<double> predict(NeuralNetwork* net, Matrix<double>& input) {
-    Matrix<double> hidden_inputs = net->hiddenWeights.dot(input);
-    Matrix<double> hidden_outputs = hidden_inputs.apply(Matrix<double>::sigmoid);
+    Matrix<double> a = input;
 
-    Matrix<double> final_inputs = net->outputWeights.dot(hidden_outputs);
-    Matrix<double> final_outputs = final_inputs.apply(Matrix<double>::sigmoid);
+    int L = net->layers.size() - 1;
 
-    Matrix<double> Res = Matrix<double>::softmax(final_outputs);
-    return Res;
+    for (int i = 0; i < L; i++) {
+        Matrix<double> z = net->weights[i].dot(a) + net->biases[i];
+        a = z.apply(Matrix<double>::sigmoid);
+    }
+
+    return Matrix<double>::softmax(a);
 }
 
 void save(const NeuralNetwork* net, const std::string& dir_name) {
-    std::filesystem::path dir = dir_name;
+    namespace fs = std::filesystem;
+    fs::path dir = dir_name;
     try {
-        std::filesystem::create_directories(dir);  // <-- FIXED
+        fs::create_directories(dir);
         std::ofstream desc(dir / "descriptor.txt");
         if (!desc.is_open()) {
             std::cerr << "Error: failed to open descriptor file.\n";
             return;
         }
 
-        desc << net->input << "\n";
-        desc << net->hidden << "\n";
-        desc << net->output << "\n";
+        desc << net->layers.size() << "\n";
+        for (int size : net->layers) {
+            desc << size << "\n";
+        }
         desc << net->learningRate << "\n";
         desc.close();
 
-        auto hidden_path = dir / "hidden.csv";
-        auto output_path = dir / "output.csv";
+        for (int i = 0; i < net->layers.size() - 1; ++i) {
+            std::string wFile = "weights_" + std::to_string(i) + ".csv";
+            std::string bFile = "biases_" + std::to_string(i) + ".csv";
 
-        Filer::save_matrix(net->hiddenWeights, hidden_path.string());
-        Filer::save_matrix(net->outputWeights, output_path.string());
+            Filer::save_matrix(net->weights[i], (dir / wFile).string());
+            Filer::save_matrix(net->biases[i], (dir / bFile).string());
+        }
 
         std::cout << "Network saved successfully in: " << dir << "\n";
     } catch (const std::filesystem::filesystem_error& e) {
@@ -114,10 +150,10 @@ void save(const NeuralNetwork* net, const std::string& dir_name) {
 }
 
 NeuralNetwork* load(const std::string& dir_name) {
-    std::filesystem::path dir = dir_name;
-
-    if (!std::filesystem::exists(dir) || !std::filesystem::is_directory(dir)) {
-        std::cerr << "Directory doesn’t exist: " << dir << std::endl;
+    namespace fs = std::filesystem;
+    fs::path dir = dir_name;
+    if (!fs::exists(dir)) {
+        std::cerr << "Directory doesnt exist ma.\n";
         return nullptr;
     }
 
@@ -127,19 +163,25 @@ NeuralNetwork* load(const std::string& dir_name) {
             std::cerr << "Error: descriptor file missing or unreadable.\n";
             return nullptr;
         }
-
-        int input, hidden, output;
+        int L;
+        desc >> L;
+        std::vector<int> layers(L);
+        for (int i = 0; i < L; i++) {
+            desc >> layers[i];
+        }
         double lr;
-        desc >> input >> hidden >> output >> lr;
+        desc >> lr;
         desc.close();
 
-        NeuralNetwork* net = new NeuralNetwork(input, hidden, output, lr);
+        NeuralNetwork* net = new NeuralNetwork(layers, lr);
 
-        auto hidden_path = dir / "hidden.csv";
-        auto output_path = dir / "output.csv";
+        for (int i = 0; i < net->layers.size() - 1; ++i) {
+            std::string wFile = "weights_" + std::to_string(i) + ".csv";
+            std::string bFile = "biases_" + std::to_string(i) + ".csv";
 
-        net->hiddenWeights = Filer::load_matrix(hidden_path.string());
-        net->outputWeights = Filer::load_matrix(output_path.string());
+            net->weights[i] = Filer::load_matrix((dir / wFile).string());
+            net->biases[i] = Filer::load_matrix((dir / bFile).string());
+        }
 
         std::cout << " Successfully loaded network from '" << dir_name << "'\n";
         return net;
@@ -149,14 +191,31 @@ NeuralNetwork* load(const std::string& dir_name) {
         return nullptr;
     }
 }
-void print(const NeuralNetwork* net) {
-    std::cout << "# of Inputs: " << net->input << "\n";
-    std::cout << "# of Hidden: " << net->hidden << "\n";
-    std::cout << "# of Output: " << net->output << "\n";
-    std::cout << "Learning Rate: " << net->learningRate << "\n";
 
-    std::cout << "Hidden Weights:\n";
-    net->hiddenWeights.print();
-    std::cout << "Output Weights:\n";
-    net->outputWeights.print();
+void print(const NeuralNetwork* net) {
+    std::cout << "\n===== Neural Network =====\n";
+
+    std::cout << "Layers: ";
+    for (size_t i = 0; i < net->layers.size(); i++) {
+        std::cout << net->layers[i];
+        if (i < net->layers.size() - 1) std::cout << " -> ";
+    }
+    std::cout << "\n";
+
+    std::cout << "Learning Rate: " << net->learningRate << "\n\n";
+
+    int L = net->layers.size() - 1;
+
+    for (int i = 0; i < L; i++) {
+        std::cout << "=== Layer " << i << " → " << (i + 1) << " ===\n";
+        std::cout << "Weights (" << net->weights[i].row() << "x" << net->weights[i].col() << ")\n";
+        net->weights[i].print();
+
+        std::cout << "Biases (" << net->biases[i].row() << "x" << net->biases[i].col() << ")\n";
+        net->biases[i].print();
+
+        std::cout << "\n";
+    }
+
+    std::cout << "==========================\n";
 }

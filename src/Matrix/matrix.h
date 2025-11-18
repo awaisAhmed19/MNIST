@@ -8,32 +8,31 @@
 #include <random>
 #include <string>
 #include <vector>
-typedef uint8_t i8;
-typedef uint16_t i16;
-typedef uint32_t i32;
-typedef uint64_t i64;
-typedef size_t s_t;
 
 template <typename Tp>
 class Matrix {
-    s_t rows = 0;
-    s_t cols = 0;
+    int rows = 0;
+    int cols = 0;
 
    public:
     friend class Filer;
     std::vector<std::vector<Tp>> matrix;
-    Matrix<Tp>(const i16 rows, const i16 cols)
+
+    Matrix<Tp>(const int rows, const int cols)
         : rows(rows), cols(cols), matrix(rows, std::vector<Tp>(cols)) {}
 
+    Matrix() : rows(0), cols(0) {}
     Matrix(const Matrix<Tp>& mat) : rows(mat.rows), cols(mat.cols), matrix(mat.matrix) {}
-    inline Tp& operator()(int r, int c) { return matrix[static_cast<s_t>(r)][static_cast<s_t>(c)]; }
+
+    inline Tp& operator()(int r, int c) { return matrix[static_cast<int>(r)][static_cast<int>(c)]; }
+    inline int row() const { return (int)rows; }
+    inline int col() const { return (int)cols; }
 
     static bool check_dimensions(const Matrix<Tp>& m1, const Matrix<Tp>& m2) {
         if (m1.rows == m2.rows && m1.cols == m2.cols) return true;
         return false;
     }
-    inline s_t row() const { return (int)rows; }
-    inline s_t col() const { return (int)cols; }
+
     void set(int r, int c, double val) {
         assert(r >= 0 && r < rows && c >= 0 && c < cols && "Matrix<Tp> index out of bounds");
         matrix[r][c] = val;
@@ -57,6 +56,7 @@ class Matrix {
         }
         return tmp;
     }
+
     void validate(std::string func_name) const {
         if (!(rows > 0 && cols > 0)) {
             std::cerr << "Invalid dimention :" << "rows: " << rows << ": cols: " << cols << "\n"
@@ -213,16 +213,11 @@ class Matrix {
     }
 
     Matrix<Tp>& operator=(const Matrix<Tp>& mat) {
-        this->validate("operator=");
-        if (this == &mat) {
-            return *this;
-        }
-
-        this->matrix.clear();
-
+        if (this == &mat) return *this;
+        // Allow assigning empty matrices — they become empty targets.
         this->rows = mat.rows;
         this->cols = mat.cols;
-        this->matrix = std::move(mat.matrix);
+        this->matrix = mat.matrix;
         return *this;
     }
 

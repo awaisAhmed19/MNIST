@@ -10,14 +10,17 @@
 namespace fs = std::filesystem;
 
 // Config
-constexpr int TRAIN_SAMPLES = 8000;
-constexpr int TEST_SAMPLES = 2000;
-constexpr int EVAL_SAMPLES = 2000;
-constexpr int EPOCHS = 5;
-constexpr double LEARNING_RATE = 0.5;
-constexpr int INPUT_SIZE = 784;
-constexpr int OUTPUT_SIZE = 10;
-constexpr int HIDDEN_SIZE = 800;
+
+constexpr int TRAIN_SAMPLES = 9;
+constexpr int TEST_SAMPLES = 4;
+constexpr int EVAL_SAMPLES = 4;
+constexpr int EPOCHS = 5;  // keep small
+// constexpr int TRAIN_SAMPLES = 8000;
+// constexpr int TEST_SAMPLES = 2000;
+// constexpr int EVAL_SAMPLES = 2000;
+// constexpr int EPOCHS = 5;
+constexpr double LEARNING_RATE = 0.01;
+static const std::vector<int> LAYERS = {784, 800, 300, 100, 10};
 
 // Ensure a file exists before trying to use it
 inline void check_file_exists(const std::string& path) {
@@ -29,8 +32,10 @@ inline void check_file_exists(const std::string& path) {
 
 int main(int argc, char* argv[]) {
     const std::string project_root = PROJECT_ROOT;
-    const std::string train_csv = project_root + "/data/mnist60k/train_final.csv";
-    const std::string val_csv = project_root + "/data/mnist60k/val_final.csv";
+
+    const std::string train_csv = project_root + "/data/mnist10/train.csv";
+    const std::string val_csv = project_root + "/data/mnist10/val_final.csv";
+
     const std::string model_path = project_root + "/testing";
 
     check_file_exists(train_csv);
@@ -47,7 +52,7 @@ int main(int argc, char* argv[]) {
     auto val_data = file.get_data(val_csv, TEST_SAMPLES);
     std::cout << "Loaded " << val_data.size() << " validation samples." << std::endl;
 
-    auto net = std::make_unique<NeuralNetwork>(INPUT_SIZE, HIDDEN_SIZE, OUTPUT_SIZE, LEARNING_RATE);
+    auto net = std::make_unique<NeuralNetwork>(LAYERS, LEARNING_RATE);
 
     double best_val_score = 0.0;
 
