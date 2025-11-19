@@ -1,5 +1,10 @@
 #pragma once
 
+#ifdef USE_CUDA
+
+#include <cuda_runtime_api.h>
+#endif // USE_CUDA
+
 #include <cassert>
 #include <cstdint>
 #include <functional>
@@ -11,13 +16,31 @@
 
 template <typename Tp>
 class Matrix {
+   public:
+#ifdef USE_CUDA
+
+    // GPU memory
+    void allocate_gpu();
+    void copy_to_gpu();
+    void copy_from_gpu();
+    void free_gpu();
+
+    // GPU accelerated ops
+    Matrix<Tp> dot_gpu(const Matrix<Tp>& other) const;
+
+    Matrix<Tp> softmax_gpu(Matrix<Tp>& mat);
+    void fill_gpu(Tp value);
+    Matrix<Tp> tanh_gpu() const;
+    Matrix<Tp> relu_gpu() const ;
+    Matrix<Tp> scaled_gpu(Tp value) const;
+#endif
+    friend class Filer;
+
     int rows = 0;
     int cols = 0;
-
-   public:
-    friend class Filer;
     std::vector<std::vector<Tp>> matrix;
 
+    Tp* d_data = nullptr;
     Matrix<Tp>(const int rows, const int cols)
         : rows(rows), cols(cols), matrix(rows, std::vector<Tp>(cols)) {}
 
@@ -28,18 +51,56 @@ class Matrix {
     inline int row() const { return (int)rows; }
     inline int col() const { return (int)cols; }
 
+
+Matrix<Tp> operator+(const Matrix<Tp>& other) const {
+    validate("operator+");
+    if (!check_dimensions(*this, other))
+        throw std::runtime_error("Dimension mismatch in operator+");
+
+    Matrix<Tp> out(rows, cols);
+    for (int i = 0; i < rows; i++)
+        for (int j = 0; j < cols; j++)
+            out.matrix[i][j] = matrix[i][j] + other.matrix[i][j];
+    return out;
+}
+
+Matrix<Tp> operator-(const Matrix<Tp>& other) const {
+    validate("operator-");
+    if (!check_dimensions(*this, other))
+        throw std::runtime_error("Dimension mismatch in operator-");
+
+    Matrix<Tp> out(rows, cols);
+    for (int i = 0; i < rows; i++)
+        for (int j = 0; j < cols; j++)
+            out.matrix[i][j] = matrix[i][j] - other.matrix[i][j];
+    return out;
+}
+
+Matrix<Tp> operator*(const Matrix<Tp>& other) const {
+    validate("operator*");
+    if (!check_dimensions(*this, other))
+        throw std::runtime_error("Dimension mismatch in operator*");
+
+    Matrix<Tp> out(rows, cols);
+    for (int i = 0; i < rows; i++)
+        for (int j = 0; j < cols; j++)
+            out.matrix[i][j] = matrix[i][j] * other.matrix[i][j];
+    return out;
+}
+
     static bool check_dimensions(const Matrix<Tp>& m1, const Matrix<Tp>& m2) {
         if (m1.rows == m2.rows && m1.cols == m2.cols) return true;
         return false;
     }
 
-    void set(int r, int c, double val) {
+    void set(int r, int c, float val) {
         assert(r >= 0 && r < rows && c >= 0 && c < cols && "Matrix<Tp> index out of bounds");
         matrix[r][c] = val;
     }
 
+
     static Matrix<Tp> softmax(Matrix<Tp>& mat) {
-        double total = 0;
+        float total = 0;
         int r = mat.rows;
         int c = mat.cols;
         for (int i = 0; i < r; ++i) {
@@ -79,10 +140,10 @@ class Matrix {
     }
 
     void fill(int num) {
-        this->validate("fill");
+        validate("fill");
         for (int i = 0; i < rows; ++i) {
             for (int j = 0; j < cols; ++j) {
-                matrix[i][j] = (double)num;
+                matrix[i][j] = (float)num;
             }
         }
     }
@@ -92,14 +153,14 @@ class Matrix {
         c = (int)this->cols;
     }
 
-    double uniform_distribution(double l, double h) {
-        double diff = h - l;
+    float uniform_distribution(float l, float h) {
+        float diff = h - l;
         int scale = 10000;
         int scaled_diff = (int)(diff * scale);
         return l + (1.0 * (rand() % scaled_diff) / scale);
     }
     void print() const {
-        this->validate("print");
+        validate("print");
 
         std::cout << "Rows: " << this->rows << " Columns: " << this->cols << std::endl;
         for (int i = 0; i < this->rows; ++i) {
@@ -111,7 +172,7 @@ class Matrix {
     }
 
     Matrix<Tp> copy() const {
-        this->validate("copy");
+        validate("copy");
         Matrix<Tp> c_mat(this->rows, this->cols);
         for (int i = 0; i < this->rows; ++i) {
             for (int j = 0; j < this->cols; ++j) {
@@ -122,9 +183,9 @@ class Matrix {
     }
 
     void randomize(int n) {
-        this->validate("randomize");
-        double min = -1.0 / sqrt(n);
-        double max = 1.0 / sqrt(n);
+        validate("randomize");
+        float min = -1.0 / sqrt(n);
+        float max = 1.0 / sqrt(n);
 
         for (int i = 0; i < rows; ++i) {
             for (int j = 0; j < cols; ++j) {
@@ -134,7 +195,7 @@ class Matrix {
     }
 
     int argmax() const {
-        this->validate("argmax");
+        validate("argmax");
 
         if (rows == 0 || cols == 0)
             throw std::runtime_error("Cannot compute argmax on empty matrix");
@@ -153,7 +214,7 @@ class Matrix {
     }
 
     Matrix<Tp> flatten(int axis) const {
-        this->validate("flatten");
+        validate("flatten");
         Matrix<Tp> mat(axis == 0 ? rows * cols : 1, axis == 0 ? 1 : rows * cols);
 
         for (int i = 0; i < rows; ++i)
@@ -167,52 +228,7 @@ class Matrix {
         return mat;
     }
 
-    Matrix<Tp> operator*(const Matrix<Tp>& mat) const {
-        this->validate("operator*");
-        if (!check_dimensions(*this, mat)) {
-            std::cerr << "invalid dimensions";
-            exit(1);
-        }
-        Matrix<Tp> o_mat(this->rows, this->cols);
-
-        for (int i = 0; i < this->rows; ++i) {
-            for (int j = 0; j < this->cols; ++j) {
-                o_mat.matrix[i][j] = this->matrix[i][j] * mat.matrix[i][j];
-            }
-        }
-        return o_mat;
-    }
-
-    Matrix<Tp> operator+(const Matrix<Tp>& mat) const {
-        this->validate("operator+");
-        if (!check_dimensions(*this, mat)) {
-            std::cerr << "invalid dimensions";
-            exit(1);
-        }
-        Matrix<Tp> o_mat(this->rows, this->cols);
-        for (int i = 0; i < this->rows; ++i) {
-            for (int j = 0; j < this->cols; ++j) {
-                o_mat.matrix[i][j] = this->matrix[i][j] + mat.matrix[i][j];
-            }
-        }
-        return o_mat;
-    }
-    Matrix<Tp> operator-(const Matrix<Tp>& mat) const {
-        this->validate("operator-");
-        if (!check_dimensions(*this, mat)) {
-            std::cerr << "invalid dimensions";
-            exit(1);
-        }
-        Matrix<Tp> o_mat(this->rows, this->cols);
-        for (int i = 0; i < this->rows; ++i) {
-            for (int j = 0; j < this->cols; ++j) {
-                o_mat.matrix[i][j] = this->matrix[i][j] - mat.matrix[i][j];
-            }
-        }
-        return o_mat;
-    }
-
-    Matrix<Tp>& operator=(const Matrix<Tp>& mat) {
+       Matrix<Tp>& operator=(const Matrix<Tp>& mat) {
         if (this == &mat) return *this;
         // Allow assigning empty matrices — they become empty targets.
         this->rows = mat.rows;
@@ -221,8 +237,8 @@ class Matrix {
         return *this;
     }
 
-    Matrix<Tp> apply(const std::function<double(double)>& func) const {
-        this->validate("apply");  // optional, keeps your safety checks
+    Matrix<Tp> apply(const std::function<float(float)>& func) const {
+        validate("apply");  // optional, keeps your safety checks
         Matrix<Tp> o_mat(this->rows, this->cols);
         for (int i = 0; i < this->rows; ++i) {
             for (int j = 0; j < this->cols; ++j) {
@@ -233,7 +249,7 @@ class Matrix {
     }
 
     Matrix<Tp> dot(const Matrix<Tp>& mat) {
-        this->validate("dot");
+        validate("dot");
         if (!(this->cols == mat.rows)) {
             std::cerr << "Dimension mistmatch dot:" << this->rows << " " << this->cols << " "
                       << mat.rows << " " << mat.cols;
@@ -251,8 +267,8 @@ class Matrix {
         return o_mat;
     }
 
-    Matrix<Tp> scale(double n) {
-        this->validate("scale");
+    Matrix<Tp> scale(float n) {
+    validate("scale");
         Matrix<Tp> o_mat = this->copy();
         for (int i = 0; i < this->rows; ++i) {
             for (int j = 0; j < this->cols; ++j) {
@@ -262,8 +278,8 @@ class Matrix {
         return o_mat;
     }
 
-    Matrix<Tp> addScalar(double n) {
-        this->validate("addScalar");
+    Matrix<Tp> addScalar(float n) {
+        validate("addScalar");
         Matrix<Tp> o_mat = this->copy();
         for (int i = 0; i < this->rows; ++i) {
             for (int j = 0; j < this->cols; ++j) {
@@ -274,7 +290,7 @@ class Matrix {
     }
 
     Matrix<Tp> T() {
-        this->validate("Transpose");
+        validate("Transpose");
         Matrix<Tp> temp(this->cols, this->rows);
 
         for (int i = 0; i < this->rows; ++i) {
@@ -285,11 +301,19 @@ class Matrix {
         return temp;
     }
 
-    static double sigmoid(double input) { return 1.0 / (1 + exp(-1 * input)); }
+    static float sigmoid(float input) { return 1.0 / (1 + exp(-1 * input)); }
+
+    static float tanh(float x) {
+        float nu=exp(x)-exp(-x);
+        float de=exp(x)+exp(-x);
+        return nu/de;
+    }
+
+    static float relu(float x) {return fmax(0,x);}
 
     static Matrix<Tp> sigmoidPrime(const Matrix<Tp>& mat) {
         Matrix<Tp> sig = mat.apply(Matrix<Tp>::sigmoid);
-        return sig.apply([&](double x) { return x * (1.0 - x); });
+        return sig.apply([&](float x) { return x * (1.0 - x); });
     }
 
     void save(std::string file_name);

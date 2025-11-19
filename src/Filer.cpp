@@ -22,7 +22,7 @@ std::vector<Filer::Img> Filer::get_data(const std::string& filename, int nums) {
         std::string item;
 
         Filer::Img img;
-        std::vector<double> image;
+        std::vector<float> image;
 
         if (has_label) {
             std::getline(ss, item, ',');

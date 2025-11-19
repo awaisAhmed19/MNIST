@@ -19,7 +19,7 @@ constexpr int EPOCHS = 5;  // keep small
 // constexpr int TEST_SAMPLES = 2000;
 // constexpr int EVAL_SAMPLES = 2000;
 // constexpr int EPOCHS = 5;
-constexpr double LEARNING_RATE = 0.01;
+constexpr float LEARNING_RATE = 0.01;
 static const std::vector<int> LAYERS = {784, 800, 300, 100, 10};
 
 // Ensure a file exists before trying to use it
@@ -54,13 +54,13 @@ int main(int argc, char* argv[]) {
 
     auto net = std::make_unique<NeuralNetwork>(LAYERS, LEARNING_RATE);
 
-    double best_val_score = 0.0;
+    float best_val_score = 0.0;
 
     for (int epoch = 1; epoch <= EPOCHS; ++epoch) {
         std::cout << "\nEpoch " << epoch << " / " << EPOCHS << std::endl;
         Train_batch_imgs(net.get(), train_data, TRAIN_SAMPLES);
 
-        double val_score = evaluate_accuracy(net.get(), val_data, EVAL_SAMPLES);
+        float val_score = evaluate_accuracy(net.get(), val_data, EVAL_SAMPLES);
         std::cout << "Validation accuracy: " << val_score << std::endl;
 
         if (val_score > best_val_score) {

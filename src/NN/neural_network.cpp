@@ -7,23 +7,23 @@
 #include <string>
 #include <vector>
 
-NeuralNetwork* Create(const std::vector<int>& layers, double lr) {
+NeuralNetwork* Create(const std::vector<int>& layers, float lr) {
     return new NeuralNetwork(layers, lr);
 }
 
-void Train(NeuralNetwork* net, Matrix<double>& X, Matrix<double>& Y) {
+void Train(NeuralNetwork* net, Matrix<float>& X, Matrix<float>& Y) {
     int L = net->layers.size() - 1;
 
-    std::vector<Matrix<double>> activation;
-    std::vector<Matrix<double>> zvals;
+    std::vector<Matrix<float>> activation;
+    std::vector<Matrix<float>> zvals;
     activation.push_back(X);
 
-    Matrix<double> a = X;
+    Matrix<float> a = X;
 
     // Forward pass
     for (int i = 0; i < L; i++) {
-        Matrix<double> z = net->weights[i].dot(a) + net->biases[i];
-        Matrix<double> a_next = z.apply(Matrix<double>::sigmoid);
+        Matrix<float> z = net->weights[i].dot(a) + net->biases[i];
+        Matrix<float> a_next = z.apply(Matrix<float>::sigmoid);
 
         zvals.push_back(z);
         activation.push_back(a_next);
@@ -31,9 +31,9 @@ void Train(NeuralNetwork* net, Matrix<double>& X, Matrix<double>& Y) {
         a = a_next;
     }
 
-    std::vector<Matrix<double>> grad;
-    std::vector<Matrix<double>> deltaW;
-    std::vector<Matrix<double>> deltaB;
+    std::vector<Matrix<float>> grad;
+    std::vector<Matrix<float>> deltaW;
+    std::vector<Matrix<float>> deltaB;
 
     grad.reserve(L);
     deltaW.reserve(L);
@@ -46,18 +46,18 @@ void Train(NeuralNetwork* net, Matrix<double>& X, Matrix<double>& Y) {
     }
 
     // Output layer
-    Matrix<double> error = Y - activation[L];
-    grad[L - 1] = error * Matrix<double>::sigmoidPrime(activation[L]);
+    Matrix<float> error = Y - activation[L];
+    grad[L - 1] = error * Matrix<float>::sigmoidPrime(activation[L]);
 
     deltaW[L - 1] = grad[L - 1].dot(activation[L - 1].T()).scale(net->learningRate);
     deltaB[L - 1] = grad[L - 1].scale(net->learningRate);
 
     // Hidden layers
     for (int i = L - 2; i >= 0; i--) {
-        Matrix<double> wT = net->weights[i + 1].T();
-        Matrix<double> err = wT.dot(grad[i + 1]);
+        Matrix<float> wT = net->weights[i + 1].T();
+        Matrix<float> err = wT.dot(grad[i + 1]);
 
-        Matrix<double> g = err * Matrix<double>::sigmoidPrime(activation[i + 1]);
+        Matrix<float> g = err * Matrix<float>::sigmoidPrime(activation[i + 1]);
 
         grad[i] = g;
 
@@ -77,26 +77,26 @@ void Train_batch_imgs(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int 
 
     for (int i = 0; i < limit; i++) {
         Filer::Img& curr = dataset[i];
-        Matrix<double> Image_vec = curr.img_data.flatten(0);
+        Matrix<float> Image_vec = curr.img_data.flatten(0);
 
-        Matrix<double> output(10, 1);
+        Matrix<float> output(10, 1);
         output.matrix[curr.label][0] = 1;
 
         Train(net, Image_vec, output);
     }
 }
 
-Matrix<double> predict_img(NeuralNetwork* net, Filer::Img& img) {
-    Matrix<double> Image_vec = img.img_data.flatten(0);
-    Matrix<double> Res = predict(net, Image_vec);
+Matrix<float> predict_img(NeuralNetwork* net, Filer::Img& img) {
+    Matrix<float> Image_vec = img.img_data.flatten(0);
+    Matrix<float> Res = predict(net, Image_vec);
     return Res;
 }
 
-double evaluate_accuracy(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int n) {
+float evaluate_accuracy(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int n) {
     int correct = 0;
 
     for (int i = 0; i < n; ++i) {
-        Matrix<double> prediction = predict_img(net, dataset[i]);
+        Matrix<float> prediction = predict_img(net, dataset[i]);
         if (prediction.argmax() == dataset[i].label) {
             correct++;
         }
@@ -104,17 +104,17 @@ double evaluate_accuracy(NeuralNetwork* net, std::vector<Filer::Img>& dataset, i
     return 1.0 * correct / n;
 }
 
-Matrix<double> predict(NeuralNetwork* net, Matrix<double>& input) {
-    Matrix<double> a = input;
+Matrix<float> predict(NeuralNetwork* net, Matrix<float>& input) {
+    Matrix<float> a = input;
 
     int L = net->layers.size() - 1;
 
     for (int i = 0; i < L; i++) {
-        Matrix<double> z = net->weights[i].dot(a) + net->biases[i];
-        a = z.apply(Matrix<double>::sigmoid);
+        Matrix<float> z = net->weights[i].dot(a) + net->biases[i];
+        a = z.apply(Matrix<float>::sigmoid);
     }
 
-    return Matrix<double>::softmax(a);
+    return Matrix<float>::softmax(a);
 }
 
 void save(const NeuralNetwork* net, const std::string& dir_name) {
@@ -169,7 +169,7 @@ NeuralNetwork* load(const std::string& dir_name) {
         for (int i = 0; i < L; i++) {
             desc >> layers[i];
         }
-        double lr;
+        float lr;
         desc >> lr;
         desc.close();
 

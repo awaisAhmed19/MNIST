@@ -1,26 +1,19 @@
-
 cmake_minimum_required(VERSION 3.16)
 project(MNIST LANGUAGES CXX)
 
-# =====================
-# Compiler Settings
-# =====================
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_BUILD_TYPE Debug)
 add_compile_options(-g -O0)
 
-# =====================
-# Output Directories
-# =====================
-# Put the compiled binary in the project root /bin instead of /build/bin
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
-# =====================
-# Source Files
-# =====================
+#==================================================================================
+# SOURCE FILES
+#==================================================================================
+
 file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
     src/*.cpp
     src/*.h
@@ -33,53 +26,58 @@ file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
 add_executable(mnist ${SRC_FILES})
 target_include_directories(mnist PRIVATE ${PROJECT_SOURCE_DIR}/src)
 
-# =====================
-# Global Definitions
-# =====================
-# Let the program know where the project root is (for loading files like data/train.csv)
 target_compile_definitions(mnist PRIVATE PROJECT_ROOT=\"${PROJECT_SOURCE_DIR}\")
 
+#==================================================================================
+# OPTIONAL CUDA
+#==================================================================================
 
-# =====================
-# CUDA Mode
-# =====================
-option(USE_CUDA "Enable CUDA support" OFF)
+option(USE_CUDA "Enable CUDA GPU acceleration" ON)
 
-if (USE_CUDA)
-    enable_language(CUDA)
-    find_package(CUDA REQUIRED)
-    message(STATUS "CUDA support enabled")
+if(USE_CUDA)
+    find_package(CUDAToolkit)
 
-    target_compile_definitions(mnist PRIVATE USE_CUDA)
+    if(CUDAToolkit_FOUND)
+        message(STATUS "CUDA toolkit found → enabling GPU features")
 
-    file(GLOB_RECURSE CUDA_SRC src/*.cu)
-    target_sources(mnist PRIVATE ${CUDA_SRC})
+        enable_language(CUDA)
+        target_compile_definitions(mnist PRIVATE USE_CUDA)
 
-    target_link_libraries(mnist PRIVATE CUDA::cudart)
+        file(GLOB_RECURSE CUDA_SRC
+            src/*.cu
+            src/Matrix/*.cu
+            src/NN/*.cu
+        )
+
+        target_sources(mnist PRIVATE ${CUDA_SRC})
+        target_include_directories(mnist PRIVATE ${CUDAToolkit_INCLUDE_DIRS})
+        target_link_libraries(mnist PRIVATE CUDA::cudart)
+    else()
+        message(WARNING "CUDA requested but NOT found → falling back to CPU mode")
+        set(USE_CUDA OFF)
+    endif()
+else()
+    message(STATUS "CUDA disabled → building CPU-only mode")
 endif()
 
+#==================================================================================
+# RAYLIB
+#==================================================================================
 
-# =====================
-# Raylib Integration
-# =====================
 find_package(raylib REQUIRED)
 
-# Platform-specific system libraries
 if(APPLE)
-    # macOS: m, pthread are available; dl/rt/X11 not needed
     target_link_libraries(mnist PRIVATE raylib m pthread)
 elseif(UNIX)
-    # Linux
     target_link_libraries(mnist PRIVATE raylib m pthread dl rt X11)
 endif()
 
+#==================================================================================
+# RUN TARGET
+#==================================================================================
 
-# =====================
-# Run target (for dev convenience)
-# =====================
 add_custom_target(run
     COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/mnist
     DEPENDS mnist
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
 )
-

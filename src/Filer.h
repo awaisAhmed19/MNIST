@@ -14,7 +14,7 @@ class Filer {
 
    public:
     struct Img {
-        Matrix<double> img_data;
+        Matrix<float> img_data;
         int label;
         Img() : img_data(28, 28), label(0) {}
     };
@@ -25,7 +25,7 @@ class Filer {
     std::vector<Filer::Img> get_data(const std::string& filename, int nums);
     void print();
 
-    static void save_matrix(const Matrix<double>& mat, const std::string file_name) {
+    static void save_matrix(const Matrix<float>& mat, const std::string file_name) {
         std::ofstream file(file_name);
 
         if (!file.is_open()) {
@@ -47,7 +47,7 @@ class Filer {
         std::cout << "Matrix saved in:" << file_name << std::endl;
     }
 
-    static Matrix<double> load_matrix(const std::string file_name) {
+    static Matrix<float> load_matrix(const std::string file_name) {
         std::ifstream file(file_name);
 
         if (!file.is_open()) {
@@ -58,7 +58,7 @@ class Filer {
 
         file >> rows >> cols;
 
-        Matrix<double> mat(rows, cols);
+        Matrix<float> mat(rows, cols);
 
         for (int i = 0; i < mat.row(); ++i) {
             for (int j = 0; j < mat.col(); ++j) {
