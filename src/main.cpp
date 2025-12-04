@@ -11,14 +11,14 @@ namespace fs = std::filesystem;
 
 // Config
 
-constexpr int TRAIN_SAMPLES = 9;
-constexpr int TEST_SAMPLES = 4;
-constexpr int EVAL_SAMPLES = 4;
-constexpr int EPOCHS = 5;  // keep small
-// constexpr int TRAIN_SAMPLES = 8000;
-// constexpr int TEST_SAMPLES = 2000;
-// constexpr int EVAL_SAMPLES = 2000;
-// constexpr int EPOCHS = 5;
+// constexpr int TRAIN_SAMPLES = 9;
+// constexpr int TEST_SAMPLES = 4;
+//  constexpr int EVAL_SAMPLES = 4;
+//  constexpr int EPOCHS = 5;  // keep small
+constexpr int TRAIN_SAMPLES = 8000;
+constexpr int TEST_SAMPLES = 2000;
+constexpr int EVAL_SAMPLES = 2000;
+constexpr int EPOCHS = 5;
 constexpr float LEARNING_RATE = 0.01;
 static const std::vector<int> LAYERS = {784, 800, 300, 100, 10};
 
@@ -33,8 +33,8 @@ inline void check_file_exists(const std::string& path) {
 int main(int argc, char* argv[]) {
     const std::string project_root = PROJECT_ROOT;
 
-    const std::string train_csv = project_root + "/data/mnist10/train.csv";
-    const std::string val_csv = project_root + "/data/mnist10/val_final.csv";
+    const std::string train_csv = project_root + "/data/mnist10k/train_final.csv";
+    const std::string val_csv = project_root + "/data/mnist10k/val_final.csv";
 
     const std::string model_path = project_root + "/testing";
 

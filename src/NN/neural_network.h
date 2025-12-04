@@ -32,6 +32,7 @@ struct NeuralNetwork {
 
 NeuralNetwork* Create(int input, int hidden, int output, float lr);
 void Train(NeuralNetwork* net, Matrix<float>& X, Matrix<float>& Y);
+void Train_gpu(NeuralNetwork* net, Matrix<float>& X, Matrix<float>& Y);
 void Train_batch_imgs(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int batch_size);
 Matrix<float> predict_img(NeuralNetwork* net, Filer::Img& img);
 float evaluate_accuracy(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int n);
