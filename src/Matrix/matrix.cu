@@ -56,6 +56,15 @@ __device__ inline double atomicAdd_double(double* address, double val) {
     return __longlong_as_double(old);
 }
 
+template<typename T>
+__device__ inline T gpu_atomic_add(T* addr, T val) {
+    return atomicAdd(addr, val);   // this works for float
+}
+
+template<>
+__device__ inline double gpu_atomic_add<double>(double* addr, double val) {
+    return atomicAdd_double(addr, val);  // uses your fallback for double
+}
 // ---------- Kernels ----------
 
 template <typename Tp>
@@ -127,7 +136,7 @@ __global__ void sumKernel(const Tp* in, Tp* total, int size) {
     }
 
     if (tid == 0) {
-        atomicAdd_double(total, cache[0]);  // Requires sm_60+ for double
+        gpu_atomic_add(total, cache[0]);  // Requires sm_60+ for double
     }
 }
 
