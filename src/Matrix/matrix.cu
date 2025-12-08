@@ -245,27 +245,40 @@ Matrix<Tp> Matrix<Tp>::transpose_gpu() const {
     result.copy_from_gpu();
     return result;
 }
+
 template <typename Tp>
 void Matrix<Tp>::copy_to_gpu() {
     assert(d_data != nullptr);
-    std::vector<Tp> flat(rows * cols);
+
+    Tp* temp = new Tp[rows * cols];  // avoids vector<> ABI issues
 
     for (int i = 0; i < rows; ++i)
-        for (int j = 0; j < cols; ++j) flat[i * cols + j] = matrix[i][j];
+        for (int j = 0; j < cols; ++j)
+            temp[i * cols + j] = matrix[i][j];
 
-    cudaMemcpy(d_data, flat.data(), flat.size() * sizeof(Tp), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_data, temp,
+               rows * cols * sizeof(Tp),
+               cudaMemcpyHostToDevice);
+
+    delete[] temp;
 }
+
 
 template <typename Tp>
 void Matrix<Tp>::copy_from_gpu() {
     assert(d_data != nullptr);
-    std::vector<Tp> flat(rows * cols);
 
-    cudaMemcpy(flat.data(), d_data, flat.size() * sizeof(Tp), cudaMemcpyDeviceToHost);
+    Tp* flat = new Tp[rows * cols];
+
+    cudaMemcpy(flat, d_data, rows * cols * sizeof(Tp), cudaMemcpyDeviceToHost);
 
     for (int i = 0; i < rows; ++i)
-        for (int j = 0; j < cols; ++j) matrix[i][j] = flat[i * cols + j];
+        for (int j = 0; j < cols; ++j)
+            matrix[i][j] = flat[i * cols + j];
+
+    delete[] flat;
 }
+
 
 template <typename Tp>
 void Matrix<Tp>::free_gpu() {
