@@ -35,6 +35,26 @@ template<typename T>
 __device__ inline T gpu_relu(T x) {
     return x > T(0) ? x : T(0);
 }
+// ----- atomicAdd for double (portable for all architectures) -----
+__device__ inline double atomicAdd_double(double* address, double val) {
+    unsigned long long int* addr_as_ull =
+        (unsigned long long int*) address;
+
+    unsigned long long int old = *addr_as_ull, assumed;
+
+    do {
+        assumed = old;
+        double old_val = __longlong_as_double(assumed);
+        double new_val = old_val + val;
+        old = atomicCAS(
+            addr_as_ull,
+            assumed,
+            __double_as_longlong(new_val)
+        );
+    } while (assumed != old);
+
+    return __longlong_as_double(old);
+}
 
 // ---------- Kernels ----------
 
@@ -107,7 +127,7 @@ __global__ void sumKernel(const Tp* in, Tp* total, int size) {
     }
 
     if (tid == 0) {
-        atomicAdd(total, cache[0]);  // Requires sm_60+ for double
+        atomicAdd_double(total, cache[0]);  // Requires sm_60+ for double
     }
 }
 
