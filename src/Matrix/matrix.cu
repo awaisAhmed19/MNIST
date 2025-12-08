@@ -1,23 +1,12 @@
 #include <cuda_runtime.h>
-
-#include <cassert>
-
 #include "matrix.h"
-
-#ifndef TILE
+#include <math.h>
 #define TILE 16
-#endif
 
-#include <cuda_runtime.h>
-
-#include <cassert>
-
-
-#define TILE 32
 
 template<typename Tp>
 __device__ inline Tp gpu_sigmoid(Tp x) {
-    return Tp(1) / (Tp(1) + gpu_exp(-x));
+    return Tp(1) / (Tp(1) + exp(-x));
 }
 
 template<typename Tp>
@@ -41,6 +30,12 @@ template<typename Tp>
 __device__ inline Tp gpu_relu_prime(Tp x) {
     return x > Tp(0) ? Tp(1) : Tp(0);
 }
+
+template<typename T>
+__device__ inline T gpu_relu(T x) {
+    return x > T(0) ? x : T(0);
+}
+
 // ---------- Kernels ----------
 
 template <typename Tp>
@@ -51,7 +46,7 @@ __global__ void elementwiseMulKernel(const Tp* A, const Tp* B, Tp* C, int size) 
 
 
 template <typename Tp>
-__global__ void elementwiseSigmoidKernel(const Tp* A, Tp* C, int size){
+__global__ void elementwiseSigmoidKernel(Tp* A, Tp* C, int size){
      int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
         A[idx] = gpu_sigmoid_prime(C[idx]);
@@ -86,7 +81,7 @@ __global__ void elementwiseSubKernel(const Tp* A, const Tp* B, Tp* C, int size) 
 template <typename Tp>
 __global__ void expKernel(const Tp* in, Tp* out, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < size) out[idx] = gpu_exp(in[idx]);
+    if (idx < size) out[idx] = exp(in[idx]);
 }
 
 template <typename Tp>
