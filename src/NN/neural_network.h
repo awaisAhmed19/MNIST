@@ -1,42 +1,47 @@
+
 #pragma once
 #include <vector>
 
 #include "../Filer.h"
-#include "../Matrix/matrix.h"
+#include "../Tensor/tensor.h"
 
 struct NeuralNetwork {
     std::vector<int> layers;
-    std::vector<Matrix<float>> weights;
-    std::vector<Matrix<float>> biases;
+
+    std::vector<std::unique_ptr<Tensor>> weights;
+    std::vector<std::unique_ptr<Tensor>> biases;
+
     float learningRate;
 
     NeuralNetwork(const std::vector<int>& layerSize, float lr)
         : layers(layerSize), learningRate(lr) {
-        for (int i = 0; i < layers.size() - 1; i++) {
-            Matrix<float> w(layers[i + 1], layers[i]);
-            Matrix<float> b(layers[i + 1], 1);
-            randomize(w);
-            randomize(b);
-            weights.push_back(w);
-            biases.push_back(b);
-        }
-    }
+        int L = layers.size() - 1;
 
-   private:
-    void randomize(Matrix<float>& mat) {
-        for (int i = 0; i < (int)mat.row(); ++i)
-            for (int j = 0; j < (int)mat.col(); ++j)
-                mat.matrix[i][j] = ((float)rand() / RAND_MAX) * 2.0 - 1.0;  // range [-1, 1]
+        for (int i = 0; i < L; i++) {
+            int in = layers[i];
+            int out = layers[i + 1];
+
+            auto w = std::make_unique<Tensor>(out, in);
+            auto b = std::make_unique<Tensor>(out, 1);
+
+            TRandomize(*w, in);
+            TRandomize(*b, in);
+
+            weights.push_back(std::move(w));
+            biases.push_back(std::move(b));
+        }
     }
 };
 
 NeuralNetwork* Create(int input, int hidden, int output, float lr);
-void Train(NeuralNetwork* net, Matrix<float>& X, Matrix<float>& Y);
-void Train_gpu(NeuralNetwork* net, Matrix<float>& X, Matrix<float>& Y);
+void Train(NeuralNetwork* net, Tensor* X, Tensor* Y);
+void Train_gpu(NeuralNetwork* net, Tensor* X, Tensor* Y);
 void Train_batch_imgs(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int batch_size);
-Matrix<float> predict_img(NeuralNetwork* net, Filer::Img& img);
+
+std::unique_ptr<Tensor> predict_img(NeuralNetwork* net, Filer::Img& img);
 float evaluate_accuracy(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int n);
-Matrix<float> predict(NeuralNetwork* net, Matrix<float>& input);
+std::unique_ptr<Tensor> predict(NeuralNetwork* net, Tensor* input);
+
 void save(const NeuralNetwork* net, const std::string& filename);
 NeuralNetwork* load(const std::string& filename);
 void print(const NeuralNetwork* net);

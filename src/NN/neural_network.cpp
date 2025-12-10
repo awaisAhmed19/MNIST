@@ -1,203 +1,256 @@
 #include <algorithm>
-#include <cstddef>
 #include <filesystem>
 #include <string>
 #include <vector>
 
 #include "neural_network.h"
 
-NeuralNetwork* Create(const std::vector<int>& layers, float lr) {
+NeuralNetwork* Create(int input, int hidden, int output, float lr) {
+    std::vector<int> layers = {input, hidden, output};
     return new NeuralNetwork(layers, lr);
 }
 
-void Train(NeuralNetwork* net, Matrix<float>& X, Matrix<float>& Y) {
+/*
+Tmatmul
+Tadd
+TSigmoid
+
+Backprop
+Output layer:
+error = Y - aL
+grad[L] = error ⊙ sigmoid'(aL)
+deltaW[L] = grad[L] * a(L-1)^T
+deltaB[L] = grad[L]
+
+Hidden layers:
+grad[i] = (W[i+1]^T * grad[i+1]) ⊙ sigmoid'(a[i])
+deltaW[i] = grad[i] * a[i-1]^T
+deltaB[i] = grad[i]
+
+update
+  W += -lr * dW
+B += -lr * dB
+*/
+void Train(NeuralNetwork* net, Tensor* X, Tensor* Y) {
     int L = net->layers.size() - 1;
 
-    std::vector<Matrix<float>> activation;
-    std::vector<Matrix<float>> zvals;
-    activation.push_back(X);
+    // ----------------------------
+    // FORWARD PASS
+    // ----------------------------
+    std::vector<std::unique_ptr<Tensor>> activations;
+    std::vector<std::unique_ptr<Tensor>> zvals;
 
-    Matrix<float> a = X;
+    activations.push_back(std::make_unique<Tensor>(*X));  // a0 = X
+    Tensor* a = activations.back().get();
 
-    // Forward pass
     for (int i = 0; i < L; i++) {
-        Matrix<float> z = net->weights[i].dot(a) + net->biases[i];
-        Matrix<float> a_next = z.apply(Matrix<float>::sigmoid);
+        auto z = Tadd(*Tmatmul(*net->weights[i], *a),  // W*a
+                      *net->biases[i]                  // + b
+        );
 
-        zvals.push_back(z);
-        activation.push_back(a_next);
+        zvals.push_back(Tcopy(*z));  // store raw z for backprop
 
-        a = a_next;
+        auto a_next = TSigmoid(*Tcopy(*z));  // activation = sigmoid(z)
+
+        activations.push_back(std::move(a_next));
+        a = activations.back().get();
     }
 
-    std::vector<Matrix<float>> grad;
-    std::vector<Matrix<float>> deltaW;
-    std::vector<Matrix<float>> deltaB;
+    // ----------------------------
+    // BACKWARD PASS
+    // ----------------------------
+    std::vector<std::unique_ptr<Tensor>> grad(L);
+    std::vector<std::unique_ptr<Tensor>> deltaW(L);
+    std::vector<std::unique_ptr<Tensor>> deltaB(L);
 
-    grad.reserve(L);
-    deltaW.reserve(L);
-    deltaB.reserve(L);
+    // ---- Output layer ----
+    auto error = Tsub(*Y, *activations[L]);  // error = y - a_L
+    auto actPrime = TSigmoidPrime(*Tcopy(*zvals[L - 1]));
 
-    for (int i = 0; i < L; ++i) {
-        grad.emplace_back(net->layers[i + 1], 1);
-        deltaW.emplace_back(net->layers[i + 1], net->layers[i]);
-        deltaB.emplace_back(net->layers[i + 1], 1);
-    }
+    grad[L - 1] = Tmul(*error, *actPrime);
 
-    // Output layer
-    Matrix<float> error = Y - activation[L];
-    grad[L - 1] = error * Matrix<float>::sigmoidPrime(activation[L]);
+    auto a_prev_T = Ttranspose(*activations[L - 1]);
+    deltaW[L - 1] = TmulScalar(*Tmatmul(*grad[L - 1], *a_prev_T), net->learningRate);
+    deltaB[L - 1] = TmulScalar(*grad[L - 1], net->learningRate);
 
-    deltaW[L - 1] = grad[L - 1].dot(activation[L - 1].T()).scale(net->learningRate);
-    deltaB[L - 1] = grad[L - 1].scale(net->learningRate);
-
-    // Hidden layers
+    // ---- Hidden layers ----
     for (int i = L - 2; i >= 0; i--) {
-        Matrix<float> wT = net->weights[i + 1].T();
-        Matrix<float> err = wT.dot(grad[i + 1]);
+        auto wT = Ttranspose(*net->weights[i + 1]);
+        auto err = Tmatmul(*wT, *grad[i + 1]);
 
-        Matrix<float> g = err * Matrix<float>::sigmoidPrime(activation[i + 1]);
+        auto actPrime_i = TSigmoidPrime(*Tcopy(*zvals[i]));
+        grad[i] = Tmul(*err, *actPrime_i);
 
-        grad[i] = g;
-
-        deltaW[i] = g.dot(activation[i].T()).scale(net->learningRate);
-        deltaB[i] = g.scale(net->learningRate);
+        auto aT = Ttranspose(*activations[i]);
+        deltaW[i] = TmulScalar(*Tmatmul(*grad[i], *aT), net->learningRate);
+        deltaB[i] = TmulScalar(*grad[i], net->learningRate);
     }
 
-    // Update
+    // ----------------------------
+    // UPDATE PARAMETERS
+    // ----------------------------
     for (int i = 0; i < L; i++) {
-        net->weights[i] = net->weights[i] + deltaW[i];
-        net->biases[i] = net->biases[i] + deltaB[i];
+        net->weights[i] = Tadd(*net->weights[i], *deltaW[i]);
+        net->biases[i] = Tadd(*net->biases[i], *deltaB[i]);
     }
 }
-
 void Train_batch_imgs(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int batch_size) {
     int limit = std::min(batch_size, (int)dataset.size());
 
     for (int i = 0; i < limit; i++) {
         Filer::Img& curr = dataset[i];
-        Matrix<float> Image_vec = curr.img_data.flatten(0);
 
-        Matrix<float> output(10, 1);
-        output.matrix[curr.label][0] = 1;
+        auto Image_vec = Tflatten(*curr.img_data);  // unique_ptr<Tensor>
+        auto output = Tonehot(curr.label);          // unique_ptr<Tensor>
 
 #ifdef USE_CUDA
-        Train_gpu(net, Image_vec, output);
+        Train_gpu(net, Image_vec.get(), output.get());
 #else
-
-        Train(net, Image_vec, output);
-#endif  // USE_CUDA
+        Train(net, Image_vec.get(), output.get());
+#endif
+        // NO FREE — unique_ptr handles it.
     }
 }
 
 // TODO: turn this into gpu code as well ??
 
-Matrix<float> predict_img(NeuralNetwork* net, Filer::Img& img) {
-    Matrix<float> Image_vec = img.img_data.flatten(0);
-    Matrix<float> Res = predict(net, Image_vec);
-    return Res;
+std::unique_ptr<Tensor> predict_img(NeuralNetwork* net, Filer::Img& img) {
+    auto Image_vec = Tflatten(*img.img_data);
+    return predict(net, Image_vec.get());  // predict returns unique_ptr<Tensor>
 }
 
 float evaluate_accuracy(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int n) {
     int correct = 0;
 
-    for (int i = 0; i < n; ++i) {
-        Matrix<float> prediction = predict_img(net, dataset[i]);
-        if (prediction.argmax() == dataset[i].label) {
-            correct++;
-        }
+    for (int i = 0; i < n; i++) {
+        auto prediction = predict_img(net, dataset[i]);  // unique_ptr<Tensor>
+        int predicted_class = TArgmax(*prediction);
+
+        if (predicted_class == dataset[i].label) correct++;
     }
-    return 1.0 * correct / n;
+
+    return (float)correct / n;
 }
 
-Matrix<float> predict(NeuralNetwork* net, Matrix<float>& input) {
-    Matrix<float> a = input;
-
+std::unique_ptr<Tensor> predict(NeuralNetwork* net, Tensor* input) {
+    Tensor* a = input;
     int L = net->layers.size() - 1;
 
+    std::unique_ptr<Tensor> out;
+
     for (int i = 0; i < L; i++) {
-        Matrix<float> z = net->weights[i].dot(a) + net->biases[i];
-        a = z.apply(Matrix<float>::sigmoid);
+        auto z = Tmatmul(*net->weights[i], *a);  // unique_ptr<Tensor>
+        auto z2 = Tadd(*z, *net->biases[i]);     // unique_ptr<Tensor>
+
+        if (i < L - 1) {
+            TSigmoid(*z2);  // in-place
+        } else {
+            TSoftmaxRows(*z2);  // in-place
+        }
+
+        out = std::move(z2);  // store output
+        a = out.get();        // next iteration uses raw pointer
     }
 
-    return Matrix<float>::softmax(a);
+    return out;  // unique_ptr moves out cleanly
 }
-
 void save(const NeuralNetwork* net, const std::string& dir_name) {
     namespace fs = std::filesystem;
     fs::path dir = dir_name;
+
     try {
         fs::create_directories(dir);
+
+        // Save architecture
         std::ofstream desc(dir / "descriptor.txt");
-        if (!desc.is_open()) {
+        if (!desc) {
             std::cerr << "Error: failed to open descriptor file.\n";
             return;
         }
 
         desc << net->layers.size() << "\n";
-        for (int size : net->layers) {
-            desc << size << "\n";
-        }
-        desc << net->learningRate << "\n";
-        desc.close();
+        for (int size : net->layers) desc << size << "\n";
 
-        for (int i = 0; i < net->layers.size() - 1; ++i) {
+        desc << net->learningRate << "\n";
+
+        // Save each tensor
+        for (int i = 0; i < net->layers.size() - 1; i++) {
             std::string wFile = "weights_" + std::to_string(i) + ".csv";
             std::string bFile = "biases_" + std::to_string(i) + ".csv";
 
-            Filer::save_matrix(net->weights[i], (dir / wFile).string());
-            Filer::save_matrix(net->biases[i], (dir / bFile).string());
+            Filer::save_tensor(net->weights[i].get(), (dir / wFile).string());
+            Filer::save_tensor(net->biases[i].get(), (dir / bFile).string());
         }
 
         std::cout << "Network saved successfully in: " << dir << "\n";
-    } catch (const std::filesystem::filesystem_error& e) {
-        std::cerr << "Error saving network: " << e.what() << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Save error: " << e.what() << "\n";
     }
 }
 
 NeuralNetwork* load(const std::string& dir_name) {
     namespace fs = std::filesystem;
     fs::path dir = dir_name;
+
     if (!fs::exists(dir)) {
-        std::cerr << "Directory doesnt exist ma.\n";
+        std::cerr << "Directory doesn’t exist.\n";
         return nullptr;
     }
 
     try {
+        // -----------------------
+        // Load descriptor
+        // -----------------------
         std::ifstream desc(dir / "descriptor.txt");
-        if (!desc.is_open()) {
-            std::cerr << "Error: descriptor file missing or unreadable.\n";
+        if (!desc) {
+            std::cerr << "Descriptor missing.\n";
             return nullptr;
         }
+
         int L;
         desc >> L;
+
         std::vector<int> layers(L);
-        for (int i = 0; i < L; i++) {
-            desc >> layers[i];
-        }
+        for (int i = 0; i < L; i++) desc >> layers[i];
+
         float lr;
         desc >> lr;
-        desc.close();
 
-        NeuralNetwork* net = new NeuralNetwork(layers, lr);
+        // Create network object
+        auto* net = new NeuralNetwork(layers, lr);
 
-        for (int i = 0; i < net->layers.size() - 1; ++i) {
+        // -----------------------
+        // Load weights + biases
+        // -----------------------
+        for (int i = 0; i < L - 1; i++) {
             std::string wFile = "weights_" + std::to_string(i) + ".csv";
             std::string bFile = "biases_" + std::to_string(i) + ".csv";
 
-            net->weights[i] = Filer::load_matrix((dir / wFile).string());
-            net->biases[i] = Filer::load_matrix((dir / bFile).string());
+            // Load raw tensor
+
+            auto w_raw = Filer::load_tensor((dir / wFile).string());
+            auto b_raw = Filer::load_tensor((dir / bFile).string());
+
+            if (!w_raw || !b_raw) {
+                std::cerr << "Failed loading tensor for layer " << i << "\n";
+                delete net;
+                return nullptr;
+            }
+
+            // Replace unique_ptr contents
+
+            net->weights[i] = std::move(w_raw);
+            net->biases[i] = std::move(b_raw);
         }
 
-        std::cout << " Successfully loaded network from '" << dir_name << "'\n";
+        std::cout << "Loaded network from: " << dir_name << "\n";
         return net;
-
     } catch (const std::exception& e) {
-        std::cerr << "Error loading network: " << e.what() << std::endl;
+        std::cerr << "Load error: " << e.what() << "\n";
         return nullptr;
     }
 }
-
+/*
 void print(const NeuralNetwork* net) {
     std::cout << "\n===== Neural Network =====\n";
 
@@ -224,4 +277,4 @@ void print(const NeuralNetwork* net) {
     }
 
     std::cout << "==========================\n";
-}
+}*/

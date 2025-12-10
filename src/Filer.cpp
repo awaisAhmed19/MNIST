@@ -1,7 +1,4 @@
 #include "Filer.h"
-
-#include "./Matrix/matrix.h"
-
 std::vector<Filer::Img> Filer::get_data(const std::string& filename, int nums) {
     std::ifstream file(filename);
 
@@ -12,45 +9,47 @@ std::vector<Filer::Img> Filer::get_data(const std::string& filename, int nums) {
     }
 
     std::string line;
-    std::getline(file, line);  // skip header
+    std::getline(file, line);
 
     bool has_label = line.find("label") != std::string::npos;
 
-    int i = 0;
-    while (i < nums && std::getline(file, line)) {
+    int count = 0;
+    while (count < nums && std::getline(file, line)) {
         std::stringstream ss(line);
         std::string item;
 
         Filer::Img img;
-        std::vector<float> image;
+        std::vector<float> pixels;
 
+        // --- LABEL ---
         if (has_label) {
             std::getline(ss, item, ',');
             img.label = std::stoi(item);
-        } else {
-            img.label = -1;  // unknown
         }
 
+        // --- PIXELS ---
         while (std::getline(ss, item, ',')) {
-            image.push_back(std::stoi(item));
+            pixels.push_back(std::stof(item));
         }
 
-        if (image.size() != 28 * 28) {
-            std::cerr << "Warning: invalid pixel count in line " << i << ": " << image.size()
-                      << std::endl;
+        if (pixels.size() != 28 * 28) {
+            std::cerr << "Warning: invalid pixel count at row " << count
+                      << " count = " << pixels.size() << std::endl;
             continue;
         }
 
-        for (int r = 0; r < 28; ++r) {
-            for (int c = 0; c < 28; ++c) {
-                img.img_data.matrix[r][c] = static_cast<float>(image[r * 28 + c] / 255.0f);
-            }
+        // Allocate Tensor 28x28 using unique_ptr
+        img.img_data = std::make_unique<Tensor>(28, 28);
+
+        for (int i = 0; i < 28 * 28; ++i) {
+            img.img_data->h_data[i] = pixels[i] / 255.0f;
         }
 
-        Imgs.push_back(img);
-        i++;
+        Imgs.push_back(std::move(img));
+        count++;
     }
 
-    std::cout << "Data set from MNIST Kaggle loaded in " << filename << std::endl;
+    std::cout << "Loaded " << Imgs.size() << " MNIST rows from " << filename << std::endl;
+
     return Imgs;
 }
