@@ -4,50 +4,6 @@
 #include <vector>
 
 #include "neural_network.h"
-
-NeuralNetwork* Create(int input, int hidden, int output, float lr) {
-    std::vector<int> layers = {input, hidden, output};
-    return new NeuralNetwork(layers, lr);
-}
-
-std::unique_ptr<Tensor> TaddBias(const Tensor& mat, const Tensor& bias) {
-    if (bias.cols != 1 || bias.rows != mat.rows) throw std::runtime_error("Bias shape mismatch");
-
-    auto out = std::make_unique<Tensor>(mat.rows, mat.cols);
-    for (int r = 0; r < mat.rows; r++) {
-        float b = bias.h_data[r];
-        for (int c = 0; c < mat.cols; c++)
-            out->h_data[r * mat.cols + c] = mat.h_data[r * mat.cols + c] + b;
-    }
-    return out;
-}
-std::unique_ptr<Tensor> stack_batch_inputs(const std::vector<Filer::Img>& dataset, int start,
-                                           int batch_size) {
-    int cols = batch_size;
-    int rows = dataset[0].img_data->rows * dataset[0].img_data->cols;  // 784
-
-    auto X = std::make_unique<Tensor>(rows, cols);
-
-    for (int b = 0; b < batch_size; b++) {
-        auto flat = Tflatten(*dataset[start + b].img_data);
-
-        for (int i = 0; i < rows; i++) X->h_data[i * cols + b] = flat->h_data[i];
-    }
-    return X;
-}
-
-std::unique_ptr<Tensor> stack_batch_labels(const std::vector<Filer::Img>& dataset, int start,
-                                           int batch_size) {
-    auto Y = std::make_unique<Tensor>(10, batch_size);
-
-    for (int b = 0; b < batch_size; b++) {
-        auto onehot = Tonehot(dataset[start + b].label);
-
-        for (int i = 0; i < 10; i++) Y->h_data[i * batch_size + b] = onehot->h_data[i];
-    }
-
-    return Y;
-}
 /*
 Tmatmul
 Tadd
@@ -70,11 +26,59 @@ update
 B += -lr * dB
 */
 
+NeuralNetwork* Create(int input, int hidden, int output, float lr) {
+    std::vector<int> layers = {input, hidden, output};
+    return new NeuralNetwork(layers, lr);
+}
+
+std::unique_ptr<Tensor> TaddBias(const Tensor& mat, const Tensor& bias) {
+    if (bias.cols != 1 || bias.rows != mat.rows) throw std::runtime_error("Bias shape mismatch");
+
+    auto out = std::make_unique<Tensor>(mat.rows, mat.cols);
+    for (int r = 0; r < mat.rows; r++) {
+        float b = bias.h_data[r];
+        for (int c = 0; c < mat.cols; c++)
+            out->h_data[r * mat.cols + c] = mat.h_data[r * mat.cols + c] + b;
+    }
+    return out;
+}
+
+// Efficient batch input stacking: avoid creating a temporary flattened tensor per sample.
+std::unique_ptr<Tensor> stack_batch_inputs(const std::vector<Filer::Img>& dataset, int start,
+                                           int batch_size) {
+    int cols = batch_size;
+    int rows = dataset[0].img_data->rows * dataset[0].img_data->cols;  // 784
+
+    auto X = std::make_unique<Tensor>(rows, cols);
+
+    for (int b = 0; b < batch_size; b++) {
+        const Tensor& img = *dataset[start + b].img_data;  // avoid Tflatten allocation
+        // copy into column b
+        for (int i = 0; i < rows; i++) X->h_data[i * cols + b] = img.h_data[i];
+    }
+    return X;
+}
+
+// Efficient batch label stacking: create one-hot labels directly.
+std::unique_ptr<Tensor> stack_batch_labels(const std::vector<Filer::Img>& dataset, int start,
+                                           int batch_size) {
+    int cols = batch_size;
+    auto Y = std::make_unique<Tensor>(10, cols);
+
+    for (int b = 0; b < batch_size; b++) {
+        int lbl = dataset[start + b].label;
+        for (int i = 0; i < 10; i++) Y->h_data[i * cols + b] = (i == lbl) ? 1.0f : 0.0f;
+    }
+
+    return Y;
+}
+
 void Train(NeuralNetwork* net, Tensor* X, Tensor* Y) {
     ForwardCache cache = forward_pass_batch(net, X);
     BackwardCache grads = backward_pass_batch(net, cache, Y);
     update_params(net, grads);
 }
+
 ForwardCache forward_pass_batch(NeuralNetwork* net, Tensor* X) {
     int L = net->layers.size() - 1;
     ForwardCache cache;
@@ -117,20 +121,20 @@ BackwardCache backward_pass_batch(NeuralNetwork* net, const ForwardCache& cache,
 
     auto a_prev_T = Ttranspose(*cache.activations[L - 1]);
     grads.dW[L - 1] = TmulScalar(*Tmatmul(*dZ[L - 1], *a_prev_T), scale);
-    grads.dB[L - 1] = TmulScalar(*dZ[L - 1], scale);
+    grads.dB[L - 1] = TmulScalar(*TsumCols(*dZ[L - 1]), scale);  // sum over batch for bias update
 
     // HIDDEN LAYERS
     for (int i = L - 2; i >= 0; i--) {
         auto wT = Ttranspose(*net->weights[i + 1]);
         auto tmp = Tmatmul(*wT, *dZ[i + 1]);
 
-        auto actPrime = Tcopy(*cache.zvals[i]);
+        auto actPrime = Tcopy(*cache.zvals[i]);  // derivative uses z (we use ReLU')
         TReluPrime(*actPrime);
         dZ[i] = Tmul(*tmp, *actPrime);
 
         auto aT = Ttranspose(*cache.activations[i]);
         grads.dW[i] = TmulScalar(*Tmatmul(*dZ[i], *aT), scale);
-        grads.dB[i] = TmulScalar(*dZ[i], scale);
+        grads.dB[i] = TmulScalar(*TsumCols(*dZ[i]), scale);
     }
 
     return grads;
@@ -190,23 +194,27 @@ float cross_entropy_loss(const Tensor& prediction, const Tensor& target) {
 
     return loss;
 }
-float cross_entropy_batch(const Tensor& predictions, const Tensor& targets) {
-    // predictions: (batch x 10)
-    // targets:     (batch x 10)
 
+float cross_entropy_batch(const Tensor& predictions, const Tensor& targets) {
+    // predictions: (num_classes x batch)
+    // targets:     (num_classes x batch)
     const float eps = 1e-12f;
     float loss = 0.0f;
 
-    for (int b = 0; b < predictions.rows; b++) {
-        for (int i = 0; i < predictions.cols; i++) {
-            float y = targets.h_data[b * targets.cols + i];
-            float p = predictions.h_data[b * predictions.cols + i];
+    int num_classes = predictions.rows;
+    int batch = predictions.cols;
+
+    for (int b = 0; b < batch; b++) {
+        for (int i = 0; i < num_classes; i++) {
+            float y = targets.h_data[i * batch + b];
+            float p = predictions.h_data[i * batch + b];
             if (y > 0.0f) loss -= std::log(p + eps);
         }
     }
 
-    return loss / predictions.rows;  // mean loss
+    return loss / batch;  // mean loss
 }
+
 std::unique_ptr<Tensor> predict_img(NeuralNetwork* net, Filer::Img& img) {
     auto Image_vec = Tflatten(*img.img_data);
     return predict(net, Image_vec.get());  // predict returns unique_ptr<Tensor>
@@ -232,8 +240,8 @@ std::unique_ptr<Tensor> predict(NeuralNetwork* net, Tensor* input) {
     std::unique_ptr<Tensor> out;
 
     for (int i = 0; i < L; i++) {
-        auto z = Tmatmul(*net->weights[i], *a);  // unique_ptr<Tensor>
-        auto z2 = Tadd(*z, *net->biases[i]);     // unique_ptr<Tensor>
+        auto z = Tmatmul(*net->weights[i], *a);
+        auto z2 = TaddBias(*z, *net->biases[i]);
 
         if (i < L - 1) {
             auto activated = Tcopy(*z2);
@@ -248,6 +256,7 @@ std::unique_ptr<Tensor> predict(NeuralNetwork* net, Tensor* input) {
 
     return out;  // unique_ptr moves out cleanly
 }
+
 void save(const NeuralNetwork* net, const std::string& dir_name) {
     namespace fs = std::filesystem;
     fs::path dir = dir_name;
@@ -344,31 +353,3 @@ NeuralNetwork* load(const std::string& dir_name) {
         return nullptr;
     }
 }
-/*
-void print(const NeuralNetwork* net) {
-    std::cout << "\n===== Neural Network =====\n";
-
-    std::cout << "Layers: ";
-    for (size_t i = 0; i < net->layers.size(); i++) {
-        std::cout << net->layers[i];
-        if (i < net->layers.size() - 1) std::cout << " -> ";
-    }
-    std::cout << "\n";
-
-    std::cout << "Learning Rate: " << net->learningRate << "\n\n";
-
-    int L = net->layers.size() - 1;
-
-    for (int i = 0; i < L; i++) {
-        std::cout << "=== Layer " << i << " → " << (i + 1) << " ===\n";
-        std::cout << "Weights (" << net->weights[i].row() << "x" << net->weights[i].col() << ")\n";
-        net->weights[i].print();
-
-        std::cout << "Biases (" << net->biases[i].row() << "x" << net->biases[i].col() << ")\n";
-        net->biases[i].print();
-
-        std::cout << "\n";
-    }
-
-    std::cout << "==========================\n";
-}*/

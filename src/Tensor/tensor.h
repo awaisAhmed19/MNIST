@@ -179,6 +179,7 @@ std::unique_ptr<Tensor> Tmatmul(const Tensor& A, const Tensor& B);
 std::unique_ptr<Tensor> TmulScalar(const Tensor& in, float s);
 std::unique_ptr<Tensor> TaddScalar(const Tensor& in, float s);
 
+std::unique_ptr<Tensor> TsumCols(const Tensor& t);
 // activations
 
 std::unique_ptr<Tensor> TSigmoid(const Tensor& src);

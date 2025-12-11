@@ -45,6 +45,20 @@ std::unique_ptr<Tensor> Tcopy(const Tensor& src) {
     return t;
 }
 
+std::unique_ptr<Tensor> TsumCols(const Tensor& t) {
+    // t is (rows x cols)
+    auto out = std::make_unique<Tensor>(t.rows, 1);
+
+    for (int r = 0; r < t.rows; r++) {
+        float sum = 0.0f;
+        for (int c = 0; c < t.cols; c++) {
+            sum += t.h_data[r * t.cols + c];
+        }
+        out->h_data[r] = sum;
+    }
+
+    return out;
+}
 std::unique_ptr<Tensor> Tadd(const Tensor& a, const Tensor& b) {
     assert_same_shape(&a, &b);
 
