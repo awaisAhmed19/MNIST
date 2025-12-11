@@ -32,7 +32,7 @@ target_compile_definitions(mnist PRIVATE PROJECT_ROOT=\"${PROJECT_SOURCE_DIR}\")
 # OPTIONAL CUDA
 #==================================================================================
 
-option(USE_CUDA "Enable CUDA GPU acceleration" ON)
+option(USE_CUDA "Enable CUDA GPU acceleration" OFF)
 
 if(USE_CUDA)
     find_package(CUDAToolkit)

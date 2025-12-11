@@ -166,9 +166,30 @@ void TReluPrime(Tensor& t) {
 }
 
 void TSoftmaxRows(Tensor& t) {
-    int m = t.rows, n = t.cols;
+    int m = t.rows;
+    int n = t.cols;
 
+    // Special case: single-column vector (N x 1).
+    // We want softmax across the N entries (rows).
+    if (n == 1) {
+        // find max for numerical stability
+        float maxv = t.h_data[0];
+        for (int r = 1; r < m; ++r) maxv = std::max(maxv, t.h_data[r]);
+
+        float sum = 0.0f;
+        for (int r = 0; r < m; ++r) {
+            t.h_data[r] = expf(t.h_data[r] - maxv);
+            sum += t.h_data[r];
+        }
+        // avoid div-by-zero
+        if (sum == 0.0f) sum = 1e-12f;
+        for (int r = 0; r < m; ++r) t.h_data[r] /= sum;
+        return;
+    }
+
+    // General-case: apply softmax across each row (1 x N row, or m x n matrix)
     for (int r = 0; r < m; ++r) {
+        // find max in the row
         float maxv = t.h_data[r * n];
         for (int j = 1; j < n; ++j) maxv = std::max(maxv, t.h_data[r * n + j]);
 
@@ -177,6 +198,7 @@ void TSoftmaxRows(Tensor& t) {
             t.h_data[r * n + j] = expf(t.h_data[r * n + j] - maxv);
             sum += t.h_data[r * n + j];
         }
+        if (sum == 0.0f) sum = 1e-12f;
         for (int j = 0; j < n; ++j) t.h_data[r * n + j] /= sum;
     }
 }
@@ -245,9 +267,14 @@ void TValidate(Tensor* t);
 bool TCheckDimension(Tensor* t);
 
 void TPrint(const Tensor& t) {
+    std::cout << "Tensor (" << t.rows << " x " << t.cols << ")\n";
+
     for (int r = 0; r < t.rows; r++) {
-        for (int c = 0; c < t.cols; c++)
+        for (int c = 0; c < t.cols; c++) {
             std::cout << std::setw(10) << t.h_data[r * t.cols + c] << " ";
+        }
         std::cout << "\n";
     }
+
+    std::cout << std::endl;
 }

@@ -114,7 +114,7 @@ if [ ! -d "$BUILD_DIR" ]; then
 fi
 
 echo "Running CMake..."
-cmake -S . -B "$BUILD_DIR"
+cmake -S . -B "$BUILD_DIR" -DUSE_CUDA=OFF
 cmake --build "$BUILD_DIR"
 
 if [ -f "./bin/mnist" ]; then

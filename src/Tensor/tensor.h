@@ -193,6 +193,5 @@ int TArgmax(const Tensor& t);
 std::unique_ptr<Tensor> Ttranspose(const Tensor& t);
 std::unique_ptr<Tensor> Tflatten(const Tensor& t);
 std::unique_ptr<Tensor> Ttanh(const Tensor& t);
-void TPrint(Tensor& t);
 void TValidate(Tensor* t);
 bool TCheckDimension(Tensor* t);

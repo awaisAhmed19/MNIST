@@ -42,6 +42,8 @@ std::unique_ptr<Tensor> predict_img(NeuralNetwork* net, Filer::Img& img);
 float evaluate_accuracy(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int n);
 std::unique_ptr<Tensor> predict(NeuralNetwork* net, Tensor* input);
 
+float cross_entropy_batch(const Tensor& predictions, const Tensor& targets);
+float cross_entropy_loss(const Tensor& prediction, const Tensor& target);
 void save(const NeuralNetwork* net, const std::string& filename);
 NeuralNetwork* load(const std::string& filename);
 void print(const NeuralNetwork* net);

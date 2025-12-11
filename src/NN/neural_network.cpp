@@ -5,6 +5,16 @@
 
 #include "neural_network.h"
 
+struct ForwardCache {
+    std::vector<std::unique_ptr<Tensor>> activations;
+    std::vector<std::unique_ptr<Tensor>> zvals;
+};
+
+struct BackwardCache {
+    std::vector<std::unique_ptr<Tensor>> dW;
+    std::vector<std::unique_ptr<Tensor>> dB;
+};
+
 NeuralNetwork* Create(int input, int hidden, int output, float lr) {
     std::vector<int> layers = {input, hidden, output};
     return new NeuralNetwork(layers, lr);
@@ -31,69 +41,86 @@ update
   W += -lr * dW
 B += -lr * dB
 */
-void Train(NeuralNetwork* net, Tensor* X, Tensor* Y) {
+
+ForwardCache forward_pass(NeuralNetwork* net, Tensor* X) {
     int L = net->layers.size() - 1;
+    ForwardCache cache;
 
-    // ----------------------------
-    // FORWARD PASS
-    // ----------------------------
-    std::vector<std::unique_ptr<Tensor>> activations;
-    std::vector<std::unique_ptr<Tensor>> zvals;
-
-    activations.push_back(std::make_unique<Tensor>(*X));  // a0 = X
-    Tensor* a = activations.back().get();
+    cache.activations.push_back(std::make_unique<Tensor>(*X));
+    Tensor* a = cache.activations.back().get();
 
     for (int i = 0; i < L; i++) {
-        auto z = Tadd(*Tmatmul(*net->weights[i], *a),  // W*a
-                      *net->biases[i]                  // + b
-        );
+        auto z = Tadd(*Tmatmul(*net->weights[i], *a), *net->biases[i]);
+        cache.zvals.push_back(Tcopy(*z));
 
-        zvals.push_back(Tcopy(*z));  // store raw z for backprop
+        if (i == L - 1) {
+            // OUTPUT LAYER = SOFTMAX
+            auto a_next = Tcopy(*z);
+            TSoftmaxRows(*a_next);
+            cache.activations.push_back(std::move(a_next));
+        } else {
+            // HIDDEN LAYERS = SIGMOID
+            auto a_next = TSigmoid(*Tcopy(*z));
+            cache.activations.push_back(std::move(a_next));
+        }
 
-        auto a_next = TSigmoid(*Tcopy(*z));  // activation = sigmoid(z)
-
-        activations.push_back(std::move(a_next));
-        a = activations.back().get();
+        a = cache.activations.back().get();
     }
 
-    // ----------------------------
-    // BACKWARD PASS
-    // ----------------------------
-    std::vector<std::unique_ptr<Tensor>> grad(L);
-    std::vector<std::unique_ptr<Tensor>> deltaW(L);
-    std::vector<std::unique_ptr<Tensor>> deltaB(L);
+    return cache;
+}
 
-    // ---- Output layer ----
-    auto error = Tsub(*Y, *activations[L]);  // error = y - a_L
-    auto actPrime = TSigmoidPrime(*Tcopy(*zvals[L - 1]));
+BackwardCache backward_pass(NeuralNetwork* net, const ForwardCache& cache, Tensor* Y) {
+    int L = net->layers.size() - 1;
+    BackwardCache grads;
 
-    grad[L - 1] = Tmul(*error, *actPrime);
+    grads.dW.resize(L);
+    grads.dB.resize(L);
 
-    auto a_prev_T = Ttranspose(*activations[L - 1]);
-    deltaW[L - 1] = TmulScalar(*Tmatmul(*grad[L - 1], *a_prev_T), net->learningRate);
-    deltaB[L - 1] = TmulScalar(*grad[L - 1], net->learningRate);
+    std::vector<std::unique_ptr<Tensor>> dZ(L);
 
-    // ---- Hidden layers ----
+    // ---- OUTPUT LAYER (softmax + CE) ----
+    dZ[L - 1] = Tsub(*cache.activations[L], *Y);
+
+    auto a_prev_T = Ttranspose(*cache.activations[L - 1]);
+    grads.dW[L - 1] = Tmatmul(*dZ[L - 1], *a_prev_T);
+    grads.dB[L - 1] = Tcopy(*dZ[L - 1]);
+
+    // ---- HIDDEN LAYERS ----
     for (int i = L - 2; i >= 0; i--) {
         auto wT = Ttranspose(*net->weights[i + 1]);
-        auto err = Tmatmul(*wT, *grad[i + 1]);
+        auto tmp = Tmatmul(*wT, *dZ[i + 1]);
 
-        auto actPrime_i = TSigmoidPrime(*Tcopy(*zvals[i]));
-        grad[i] = Tmul(*err, *actPrime_i);
+        auto actPrime = TSigmoidPrime(*Tcopy(*cache.zvals[i]));
+        dZ[i] = Tmul(*tmp, *actPrime);
 
-        auto aT = Ttranspose(*activations[i]);
-        deltaW[i] = TmulScalar(*Tmatmul(*grad[i], *aT), net->learningRate);
-        deltaB[i] = TmulScalar(*grad[i], net->learningRate);
+        auto aT = Ttranspose(*cache.activations[i]);
+
+        grads.dW[i] = Tmatmul(*dZ[i], *aT);
+        grads.dB[i] = Tcopy(*dZ[i]);
     }
 
-    // ----------------------------
-    // UPDATE PARAMETERS
-    // ----------------------------
+    return grads;
+}
+
+void update_params(NeuralNetwork* net, const BackwardCache& grads) {
+    int L = net->layers.size() - 1;
+
     for (int i = 0; i < L; i++) {
-        net->weights[i] = Tadd(*net->weights[i], *deltaW[i]);
-        net->biases[i] = Tadd(*net->biases[i], *deltaB[i]);
+        auto scaled_dW = TmulScalar(*grads.dW[i], net->learningRate);
+        auto scaled_dB = TmulScalar(*grads.dB[i], net->learningRate);
+
+        net->weights[i] = Tsub(*net->weights[i], *scaled_dW);
+        net->biases[i] = Tsub(*net->biases[i], *scaled_dB);
     }
 }
+
+void Train(NeuralNetwork* net, Tensor* X, Tensor* Y) {
+    auto cache = forward_pass(net, X);
+    auto grads = backward_pass(net, cache, Y);
+    update_params(net, grads);
+}
+
 void Train_batch_imgs(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int batch_size) {
     int limit = std::min(batch_size, (int)dataset.size());
 
@@ -114,6 +141,45 @@ void Train_batch_imgs(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int 
 
 // TODO: turn this into gpu code as well ??
 
+// loss = - sum_i target_i * log(pred_i + eps)
+// returns scalar loss for the single sample
+float cross_entropy_loss(const Tensor& prediction, const Tensor& target) {
+    if (prediction.rows != target.rows || prediction.cols != target.cols) {
+        throw std::runtime_error("cross_entropy_loss: shape mismatch");
+    }
+
+    const float eps = 1e-12f;
+    float loss = 0.0f;
+
+    int size = prediction.rows * prediction.cols;
+    for (int k = 0; k < size; ++k) {
+        float y = target.h_data[k];
+        // only accumulate where target is nonzero (one-hot) but this also works with soft targets
+        if (y != 0.0f) {
+            float p = prediction.h_data[k];
+            loss -= y * std::log(p + eps);
+        }
+    }
+
+    return loss;
+}
+float cross_entropy_batch(const Tensor& predictions, const Tensor& targets) {
+    // predictions: (batch x 10)
+    // targets:     (batch x 10)
+
+    const float eps = 1e-12f;
+    float loss = 0.0f;
+
+    for (int b = 0; b < predictions.rows; b++) {
+        for (int i = 0; i < predictions.cols; i++) {
+            float y = targets.h_data[b * targets.cols + i];
+            float p = predictions.h_data[b * predictions.cols + i];
+            if (y > 0.0f) loss -= std::log(p + eps);
+        }
+    }
+
+    return loss / predictions.rows;  // mean loss
+}
 std::unique_ptr<Tensor> predict_img(NeuralNetwork* net, Filer::Img& img) {
     auto Image_vec = Tflatten(*img.img_data);
     return predict(net, Image_vec.get());  // predict returns unique_ptr<Tensor>
