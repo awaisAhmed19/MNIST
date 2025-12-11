@@ -19,7 +19,7 @@ install_deps_linux() {
   fi
 
   # Define dependencies
-  DEPS=(g++ cmake make nvidia-smi nvcc)
+  DEPS=(g++ cmake make )
   UPDATE_CMD=""
   INSTALL_CMD=""
   PKG_CHECK=""
