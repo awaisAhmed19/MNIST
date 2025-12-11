@@ -187,6 +187,7 @@ std::unique_ptr<Tensor> TSigmoidPrime(const Tensor& src);
 void TRelu(Tensor& t);
 void TReluPrime(Tensor& t);
 void TSoftmaxRows(Tensor& t);
+void TSoftmaxCols(Tensor& t);
 void TRandomize(Tensor& t, float fan_in);
 void TPrint(const Tensor& t);
 int TArgmax(const Tensor& t);
