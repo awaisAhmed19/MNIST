@@ -65,3 +65,4 @@ float cross_entropy_loss(const Tensor& prediction, const Tensor& target);
 void save(const NeuralNetwork* net, const std::string& filename);
 NeuralNetwork* load(const std::string& filename);
 void print(const NeuralNetwork* net);
+void Train(NeuralNetwork* net, Tensor* X, Tensor* Y);

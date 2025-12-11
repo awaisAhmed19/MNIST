@@ -70,6 +70,11 @@ update
 B += -lr * dB
 */
 
+void Train(NeuralNetwork* net, Tensor* X, Tensor* Y) {
+    ForwardCache cache = forward_pass_batch(net, X);
+    BackwardCache grads = backward_pass_batch(net, cache, Y);
+    update_params(net, grads);
+}
 ForwardCache forward_pass_batch(NeuralNetwork* net, Tensor* X) {
     int L = net->layers.size() - 1;
     ForwardCache cache;

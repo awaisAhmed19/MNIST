@@ -10,8 +10,11 @@
 constexpr int TRAIN_SAMPLES = 8000;
 constexpr int TEST_SAMPLES = 2000;
 constexpr int EVAL_SAMPLES = 2000;
+
 constexpr int EPOCHS = 10;
+constexpr int BATCH_SIZE = 32;  // mini-batch size
 constexpr float LEARNING_RATE = 0.01;
+
 static const std::vector<int> LAYERS = {784, 800, 300, 100, 10};
 
 namespace fs = std::filesystem;
@@ -43,9 +46,9 @@ int main(int argc, char* argv[]) {
 
     auto net = std::make_unique<NeuralNetwork>(LAYERS, LEARNING_RATE);
 
-    // ============================================================
-    // Optional sanity check – comment out when done debugging
-    // ============================================================
+    // ---------------------------------------------------------------
+    // Sanity check (one sample) — verifies training pipeline is valid
+    // ---------------------------------------------------------------
     {
         std::cout << "\nSanity check before training\n";
 
@@ -63,13 +66,15 @@ int main(int argc, char* argv[]) {
 
         std::cout << "Initial prediction: " << TArgmax(*p_before) << " label: " << sample.label
                   << "\n";
+
         std::cout << "Loss before: " << loss_before << "\n";
         std::cout << "Loss after : " << loss_after << "\n";
     }
-    // ============================================================
 
+    // ---------------------------------------------------------------
+    // Training loop (mini-batch)
+    // ---------------------------------------------------------------
     float best_val = 0.0f;
-
     auto total_start = std::chrono::high_resolution_clock::now();
 
     for (int epoch = 1; epoch <= EPOCHS; epoch++) {
@@ -77,7 +82,7 @@ int main(int argc, char* argv[]) {
 
         std::cout << "\nEpoch " << epoch << " / " << EPOCHS << "\n";
 
-        Train_batch_imgs(net.get(), train_data, TRAIN_SAMPLES);
+        Train_batch_imgs(net.get(), train_data, BATCH_SIZE);
 
         float acc = evaluate_accuracy(net.get(), val_data, EVAL_SAMPLES);
 
