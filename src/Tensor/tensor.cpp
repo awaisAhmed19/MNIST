@@ -169,47 +169,41 @@ void TSoftmaxRows(Tensor& t) {
     int m = t.rows;
     int n = t.cols;
 
-    // Special case: single-column vector (N x 1).
-    // We want softmax across the N entries (rows).
+    // Special case: single-column vector (softmax over rows)
     if (n == 1) {
-        // find max for numerical stability
         float maxv = t.h_data[0];
         for (int r = 1; r < m; ++r) maxv = std::max(maxv, t.h_data[r]);
 
         float sum = 0.0f;
         for (int r = 0; r < m; ++r) {
-            t.h_data[r] = expf(t.h_data[r] - maxv);
-            sum += t.h_data[r];
+            float e = expf(t.h_data[r] - maxv);
+            e = std::max(e, 1e-12f);
+            t.h_data[r] = e;
+            sum += e;
         }
-        // avoid div-by-zero
+
         if (sum == 0.0f) sum = 1e-12f;
         for (int r = 0; r < m; ++r) t.h_data[r] /= sum;
+
         return;
     }
 
-    // General-case: apply softmax across each row (1 x N row, or m x n matrix)
+    // General case: softmax row-wise
     for (int r = 0; r < m; ++r) {
-        // find max in the row
         float maxv = t.h_data[r * n];
         for (int j = 1; j < n; ++j) maxv = std::max(maxv, t.h_data[r * n + j]);
 
         float sum = 0.0f;
         for (int j = 0; j < n; ++j) {
-            t.h_data[r * n + j] = expf(t.h_data[r * n + j] - maxv);
-            sum += t.h_data[r * n + j];
+            float e = expf(t.h_data[r * n + j] - maxv);
+            e = std::max(e, 1e-12f);
+            t.h_data[r * n + j] = e;
+            sum += e;
         }
+
         if (sum == 0.0f) sum = 1e-12f;
         for (int j = 0; j < n; ++j) t.h_data[r * n + j] /= sum;
     }
-}
-
-std::unique_ptr<Tensor> Ttanh(const Tensor& t) {
-    auto out = std::make_unique<Tensor>(t.rows, t.cols);
-    int size = t.rows * t.cols;
-
-    for (int i = 0; i < size; i++) out->h_data[i] = tanhf(t.h_data[i]);
-
-    return out;
 }
 
 // utilities

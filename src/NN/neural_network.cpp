@@ -20,6 +20,44 @@ NeuralNetwork* Create(int input, int hidden, int output, float lr) {
     return new NeuralNetwork(layers, lr);
 }
 
+std::unique_ptr<Tensor> TaddBias(const Tensor& mat, const Tensor& bias) {
+    if (bias.cols != 1 || bias.rows != mat.rows) throw std::runtime_error("Bias shape mismatch");
+
+    auto out = std::make_unique<Tensor>(mat.rows, mat.cols);
+    for (int r = 0; r < mat.rows; r++) {
+        float b = bias.h_data[r];
+        for (int c = 0; c < mat.cols; c++)
+            out->h_data[r * mat.cols + c] = mat.h_data[r * mat.cols + c] + b;
+    }
+    return out;
+}
+std::unique_ptr<Tensor> stack_batch_inputs(const std::vector<Filer::Img>& dataset, int start,
+                                           int batch_size) {
+    int cols = batch_size;
+    int rows = dataset[0].img_data->rows * dataset[0].img_data->cols;  // 784
+
+    auto X = std::make_unique<Tensor>(rows, cols);
+
+    for (int b = 0; b < batch_size; b++) {
+        auto flat = Tflatten(*dataset[start + b].img_data);
+
+        for (int i = 0; i < rows; i++) X->h_data[i * cols + b] = flat->h_data[i];
+    }
+    return X;
+}
+
+std::unique_ptr<Tensor> stack_batch_labels(const std::vector<Filer::Img>& dataset, int start,
+                                           int batch_size) {
+    auto Y = std::make_unique<Tensor>(10, batch_size);
+
+    for (int b = 0; b < batch_size; b++) {
+        auto onehot = Tonehot(dataset[start + b].label);
+
+        for (int i = 0; i < 10; i++) Y->h_data[i * batch_size + b] = onehot->h_data[i];
+    }
+
+    return Y;
+}
 /*
 Tmatmul
 Tadd
@@ -42,7 +80,7 @@ update
 B += -lr * dB
 */
 
-ForwardCache forward_pass(NeuralNetwork* net, Tensor* X) {
+ForwardCache forward_pass_batch(NeuralNetwork* net, Tensor* X) {
     int L = net->layers.size() - 1;
     ForwardCache cache;
 
@@ -50,27 +88,24 @@ ForwardCache forward_pass(NeuralNetwork* net, Tensor* X) {
     Tensor* a = cache.activations.back().get();
 
     for (int i = 0; i < L; i++) {
-        auto z = Tadd(*Tmatmul(*net->weights[i], *a), *net->biases[i]);
+        auto z = TaddBias(*Tmatmul(*net->weights[i], *a), *net->biases[i]);
         cache.zvals.push_back(Tcopy(*z));
 
         if (i == L - 1) {
-            // OUTPUT LAYER = SOFTMAX
             auto a_next = Tcopy(*z);
             TSoftmaxRows(*a_next);
             cache.activations.push_back(std::move(a_next));
         } else {
-            // HIDDEN LAYERS = SIGMOID
-            auto a_next = TSigmoid(*Tcopy(*z));
+            auto a_next = Tcopy(*z);
+            TRelu(*a_next);
             cache.activations.push_back(std::move(a_next));
         }
-
         a = cache.activations.back().get();
     }
-
     return cache;
 }
 
-BackwardCache backward_pass(NeuralNetwork* net, const ForwardCache& cache, Tensor* Y) {
+BackwardCache backward_pass_batch(NeuralNetwork* net, const ForwardCache& cache, Tensor* Y) {
     int L = net->layers.size() - 1;
     BackwardCache grads;
 
@@ -79,25 +114,28 @@ BackwardCache backward_pass(NeuralNetwork* net, const ForwardCache& cache, Tenso
 
     std::vector<std::unique_ptr<Tensor>> dZ(L);
 
-    // ---- OUTPUT LAYER (softmax + CE) ----
+    int batch = Y->cols;
+    float scale = 1.0f / batch;
+
+    // OUTPUT LAYER
     dZ[L - 1] = Tsub(*cache.activations[L], *Y);
 
     auto a_prev_T = Ttranspose(*cache.activations[L - 1]);
-    grads.dW[L - 1] = Tmatmul(*dZ[L - 1], *a_prev_T);
-    grads.dB[L - 1] = Tcopy(*dZ[L - 1]);
+    grads.dW[L - 1] = TmulScalar(*Tmatmul(*dZ[L - 1], *a_prev_T), scale);
+    grads.dB[L - 1] = TmulScalar(*dZ[L - 1], scale);
 
-    // ---- HIDDEN LAYERS ----
+    // HIDDEN LAYERS
     for (int i = L - 2; i >= 0; i--) {
         auto wT = Ttranspose(*net->weights[i + 1]);
         auto tmp = Tmatmul(*wT, *dZ[i + 1]);
 
-        auto actPrime = TSigmoidPrime(*Tcopy(*cache.zvals[i]));
+        auto actPrime = Tcopy(*cache.zvals[i]);
+        TReluPrime(*actPrime);
         dZ[i] = Tmul(*tmp, *actPrime);
 
         auto aT = Ttranspose(*cache.activations[i]);
-
-        grads.dW[i] = Tmatmul(*dZ[i], *aT);
-        grads.dB[i] = Tcopy(*dZ[i]);
+        grads.dW[i] = TmulScalar(*Tmatmul(*dZ[i], *aT), scale);
+        grads.dB[i] = TmulScalar(*dZ[i], scale);
     }
 
     return grads;
@@ -115,27 +153,21 @@ void update_params(NeuralNetwork* net, const BackwardCache& grads) {
     }
 }
 
-void Train(NeuralNetwork* net, Tensor* X, Tensor* Y) {
-    auto cache = forward_pass(net, X);
-    auto grads = backward_pass(net, cache, Y);
-    update_params(net, grads);
-}
-
 void Train_batch_imgs(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int batch_size) {
-    int limit = std::min(batch_size, (int)dataset.size());
+    static std::mt19937 rng(std::random_device{}());
+    std::shuffle(dataset.begin(), dataset.end(), rng);
 
-    for (int i = 0; i < limit; i++) {
-        Filer::Img& curr = dataset[i];
+    int total = dataset.size();
 
-        auto Image_vec = Tflatten(*curr.img_data);  // unique_ptr<Tensor>
-        auto output = Tonehot(curr.label);          // unique_ptr<Tensor>
+    for (int start = 0; start < total; start += batch_size) {
+        int bs = std::min(batch_size, total - start);
 
-#ifdef USE_CUDA
-        Train_gpu(net, Image_vec.get(), output.get());
-#else
-        Train(net, Image_vec.get(), output.get());
-#endif
-        // NO FREE — unique_ptr handles it.
+        auto X = stack_batch_inputs(dataset, start, bs);
+        auto Y = stack_batch_labels(dataset, start, bs);
+
+        auto cache = forward_pass_batch(net, X.get());
+        auto grads = backward_pass_batch(net, cache, Y.get());
+        update_params(net, grads);
     }
 }
 
@@ -209,13 +241,14 @@ std::unique_ptr<Tensor> predict(NeuralNetwork* net, Tensor* input) {
         auto z2 = Tadd(*z, *net->biases[i]);     // unique_ptr<Tensor>
 
         if (i < L - 1) {
-            TSigmoid(*z2);  // in-place
+            auto activated = Tcopy(*z2);
+            TRelu(*activated);
+            out = std::move(activated);
         } else {
-            TSoftmaxRows(*z2);  // in-place
+            TSoftmaxRows(*z2);
+            out = std::move(z2);
         }
-
-        out = std::move(z2);  // store output
-        a = out.get();        // next iteration uses raw pointer
+        a = out.get();
     }
 
     return out;  // unique_ptr moves out cleanly
