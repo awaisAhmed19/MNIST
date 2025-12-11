@@ -5,16 +5,6 @@
 
 #include "neural_network.h"
 
-struct ForwardCache {
-    std::vector<std::unique_ptr<Tensor>> activations;
-    std::vector<std::unique_ptr<Tensor>> zvals;
-};
-
-struct BackwardCache {
-    std::vector<std::unique_ptr<Tensor>> dW;
-    std::vector<std::unique_ptr<Tensor>> dB;
-};
-
 NeuralNetwork* Create(int input, int hidden, int output, float lr) {
     std::vector<int> layers = {input, hidden, output};
     return new NeuralNetwork(layers, lr);
