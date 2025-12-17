@@ -247,32 +247,21 @@ std::unique_ptr<Tensor> Ttranspose(const Tensor& t) {
 }
 
 void TSoftmaxCols(Tensor& t) {
-    int rows = t.rows;
-    int cols = t.cols;
+    for (int j = 0; j < t.cols; j++) {
+        float maxv = -INFINITY;
+        for (int i = 0; i < t.rows; i++) maxv = std::max(maxv, t.h_data[i * t.cols + j]);
 
-    for (int c = 0; c < cols; c++) {
-        float maxv = t.h_data[c];
-
-        // find max in this column
-        for (int r = 1; r < rows; r++) {
-            float v = t.h_data[r * cols + c];
-            if (v > maxv) maxv = v;
-        }
-
-        // compute exps
-        float sum = 0;
-        for (int r = 0; r < rows; r++) {
-            float e = expf(t.h_data[r * cols + c] - maxv);
-            t.h_data[r * cols + c] = e;
+        float sum = 0.0f;
+        for (int i = 0; i < t.rows; i++) {
+            float e = std::exp(t.h_data[i * t.cols + j] - maxv);
+            t.h_data[i * t.cols + j] = e;
             sum += e;
         }
 
-        // normalize
-        for (int r = 0; r < rows; r++) {
-            t.h_data[r * cols + c] /= sum;
-        }
+        for (int i = 0; i < t.rows; i++) t.h_data[i * t.cols + j] /= sum;
     }
 }
+
 void TRandomize(Tensor& t, float fan_in) {
     if (fan_in <= 0.0f) throw std::runtime_error("fan_in must be > 0");
 

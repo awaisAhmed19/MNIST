@@ -206,8 +206,9 @@ float cross_entropy_batch(const Tensor& predictions, const Tensor& targets) {
 
     for (int b = 0; b < batch; b++) {
         for (int i = 0; i < num_classes; i++) {
-            float y = targets.h_data[i * batch + b];
-            float p = predictions.h_data[i * batch + b];
+            float y = targets.h_data[i * predictions.cols + b];
+            float p = predictions.h_data[i * predictions.cols + b];
+
             if (y > 0.0f) loss -= std::log(p + eps);
         }
     }
@@ -248,7 +249,7 @@ std::unique_ptr<Tensor> predict(NeuralNetwork* net, Tensor* input) {
             TRelu(*activated);
             out = std::move(activated);
         } else {
-            TSoftmaxRows(*z2);
+            TSoftmaxCols(*z2);
             out = std::move(z2);
         }
         a = out.get();
