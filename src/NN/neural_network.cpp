@@ -75,6 +75,14 @@ std::unique_ptr<Tensor> stack_batch_labels(const std::vector<Filer::Img>& datase
 
 void Train(NeuralNetwork* net, Tensor* X, Tensor* Y) {
     ForwardCache cache = forward_pass_batch(net, X);
+
+    static bool printed = false;
+    if (!printed) {
+        print_col(*cache.activations.back(), 0, "PRED (softmax)");
+        print_col(*Y, 0, "TARGET (one-hot)");
+        printed = true;
+    }
+
     BackwardCache grads = backward_pass_batch(net, cache, Y);
     update_params(net, grads);
 }
@@ -92,7 +100,7 @@ ForwardCache forward_pass_batch(NeuralNetwork* net, Tensor* X) {
 
         if (i == L - 1) {
             auto a_next = Tcopy(*z);
-            TSoftmaxRows(*a_next);
+            TSoftmaxCols(*a_next);
             cache.activations.push_back(std::move(a_next));
         } else {
             auto a_next = Tcopy(*z);
@@ -150,6 +158,11 @@ void update_params(NeuralNetwork* net, const BackwardCache& grads) {
         net->weights[i] = Tsub(*net->weights[i], *scaled_dW);
         net->biases[i] = Tsub(*net->biases[i], *scaled_dB);
     }
+    static bool printed = false;
+    if (!printed) {
+        std::cout << "Sample weight update: " << grads.dW.back()->h_data[0] << std::endl;
+        printed = true;
+    }
 }
 
 void Train_batch_imgs(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int batch_size) {
@@ -198,22 +211,29 @@ float cross_entropy_loss(const Tensor& prediction, const Tensor& target) {
 float cross_entropy_batch(const Tensor& predictions, const Tensor& targets) {
     // predictions: (num_classes x batch)
     // targets:     (num_classes x batch)
-    const float eps = 1e-12f;
+
+    const float eps = 1e-7f;
     float loss = 0.0f;
 
     int num_classes = predictions.rows;
     int batch = predictions.cols;
 
     for (int b = 0; b < batch; b++) {
-        for (int i = 0; i < num_classes; i++) {
-            float y = targets.h_data[i * predictions.cols + b];
-            float p = predictions.h_data[i * predictions.cols + b];
+        float example_loss = 0.0f;
 
-            if (y > 0.0f) loss -= std::log(p + eps);
+        for (int i = 0; i < num_classes; i++) {
+            float y = targets.h_data[i * batch + b];
+
+            if (y > 0.0f) {
+                float p = std::max(predictions.h_data[i * batch + b], eps);
+                example_loss -= std::log(p);
+            }
         }
+
+        loss += example_loss;
     }
 
-    return loss / batch;  // mean loss
+    return loss / batch;
 }
 
 std::unique_ptr<Tensor> predict_img(NeuralNetwork* net, Filer::Img& img) {
@@ -353,4 +373,23 @@ NeuralNetwork* load(const std::string& dir_name) {
         std::cerr << "Load error: " << e.what() << "\n";
         return nullptr;
     }
+}
+
+// Helper functions
+void print_vector(const std::vector<float>& v, const std::string& name) {
+    std::cout << name << ": [ ";
+    for (float x : v) std::cout << x << " ";
+    std::cout << "]\n";
+}
+
+void print_col(const Tensor& T, int col, const std::string& name) {
+    //    sync_to_host(T);
+
+    std::cout << name << ": [ ";
+
+    for (int r = 0; r < T.rows; r++) {
+        std::cout << T.h_data[r * T.cols + col] << " ";
+    }
+
+    std::cout << "]\n";
 }

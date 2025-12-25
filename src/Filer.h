@@ -58,7 +58,7 @@ class Filer {
         int rows, cols;
         sscanf(header.c_str(), "%d,%d", &rows, &cols);
 
-        Tensor* t = Tcreate(rows, cols);
+        auto t = std::make_unique<Tensor>(rows, cols);
 
         for (int r = 0; r < rows; ++r) {
             std::string line;
@@ -74,7 +74,7 @@ class Filer {
         }
 
         file.close();
-        return std::make_unique<Tensor>(rows, cols);
+        return t;
     }
 
    private:

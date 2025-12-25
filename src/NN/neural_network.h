@@ -66,3 +66,4 @@ void save(const NeuralNetwork* net, const std::string& filename);
 NeuralNetwork* load(const std::string& filename);
 void print(const NeuralNetwork* net);
 void Train(NeuralNetwork* net, Tensor* X, Tensor* Y);
+void print_col(const Tensor& T, int col, const std::string& name);

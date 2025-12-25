@@ -7,13 +7,13 @@
 #include "./NN/neural_network.h"
 #include "Filer.h"
 
-constexpr int TRAIN_SAMPLES = 800;
-constexpr int TEST_SAMPLES = 200;
-constexpr int EVAL_SAMPLES = 200;
+constexpr int TRAIN_SAMPLES = 8000;
+constexpr int TEST_SAMPLES = 2000;
+constexpr int EVAL_SAMPLES = 2000;
 
 constexpr int EPOCHS = 10;
-constexpr int BATCH_SIZE = 32;  // mini-batch size
-constexpr float LEARNING_RATE = 0.0005;
+constexpr int BATCH_SIZE = 32;
+constexpr float LEARNING_RATE = 0.05;
 
 static const std::vector<int> LAYERS = {784, 800, 300, 100, 10};
 
