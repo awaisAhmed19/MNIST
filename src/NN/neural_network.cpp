@@ -238,7 +238,7 @@ float cross_entropy_batch(const Tensor& predictions, const Tensor& targets) {
 
 std::unique_ptr<Tensor> predict_img(NeuralNetwork* net, Filer::Img& img) {
     auto Image_vec = Tflatten(*img.img_data);
-    return predict(net, Image_vec.get());  // predict returns unique_ptr<Tensor>
+    return predict(net, Image_vec.get());
 }
 
 float evaluate_accuracy(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int n) {
@@ -275,13 +275,14 @@ std::unique_ptr<Tensor> predict(NeuralNetwork* net, Tensor* input) {
         a = out.get();
     }
 
-    return out;  // unique_ptr moves out cleanly
+    return out;
 }
 
 void save(const NeuralNetwork* net, const std::string& dir_name) {
     namespace fs = std::filesystem;
     fs::path dir = dir_name;
 
+    Filer filer;
     try {
         fs::create_directories(dir);
 
@@ -302,8 +303,8 @@ void save(const NeuralNetwork* net, const std::string& dir_name) {
             std::string wFile = "weights_" + std::to_string(i) + ".csv";
             std::string bFile = "biases_" + std::to_string(i) + ".csv";
 
-            Filer::save_tensor(net->weights[i].get(), (dir / wFile).string());
-            Filer::save_tensor(net->biases[i].get(), (dir / bFile).string());
+            filer.save_tensor(net->weights[i].get(), (dir / wFile).string());
+            filer.save_tensor(net->biases[i].get(), (dir / bFile).string());
         }
 
         std::cout << "Network saved successfully in: " << dir << "\n";
@@ -315,16 +316,13 @@ void save(const NeuralNetwork* net, const std::string& dir_name) {
 NeuralNetwork* load(const std::string& dir_name) {
     namespace fs = std::filesystem;
     fs::path dir = dir_name;
-
+    Filer filer;
     if (!fs::exists(dir)) {
         std::cerr << "Directory doesn’t exist.\n";
         return nullptr;
     }
 
     try {
-        // -----------------------
-        // Load descriptor
-        // -----------------------
         std::ifstream desc(dir / "descriptor.txt");
         if (!desc) {
             std::cerr << "Descriptor missing.\n";
@@ -352,8 +350,8 @@ NeuralNetwork* load(const std::string& dir_name) {
 
             // Load raw tensor
 
-            auto w_raw = Filer::load_tensor((dir / wFile).string());
-            auto b_raw = Filer::load_tensor((dir / bFile).string());
+            auto w_raw = filer.load_tensor((dir / wFile).string());
+            auto b_raw = filer.load_tensor((dir / bFile).string());
 
             if (!w_raw || !b_raw) {
                 std::cerr << "Failed loading tensor for layer " << i << "\n";
