@@ -177,13 +177,13 @@ void Train_batch_imgs(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int 
         auto X = stack_batch_inputs(dataset, start, bs);
         auto Y = stack_batch_labels(dataset, start, bs);
 
-#ifdef USE_CUDA
-        Train_gpu(net, X.get(), Y.get());
-#else
+        // #ifdef USE_CUDA
+        //         Train_gpu(net, X.get(), Y.get());
+        // #else
         auto cache = forward_pass_batch(net, X.get());
         auto grads = backward_pass_batch(net, cache, Y.get());
         update_params(net, grads);
-#endif
+        // #endif
     }
 }
 
