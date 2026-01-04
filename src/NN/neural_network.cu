@@ -1,5 +1,4 @@
 #include "neural_network.h"
-#include "../Tensor/tensor.h"
 
 // GPU Forward Pass (batch)
 
@@ -18,7 +17,8 @@ ForwardCache forward_pass_gpu(NeuralNetwork* net, Tensor* X)
 
         // z = W[i] * a + b[i]
         auto z = TmatmulGPU(*net->weights[i], *a);
-        auto z_bias = Tadd(*z, *net->biases[i]);   // bias add done on host (safe)
+        auto z_bias = TaddBias(*z, *net->biases[i]);
+
 
         cache.zvals.push_back(Tcopy(*z_bias));
 

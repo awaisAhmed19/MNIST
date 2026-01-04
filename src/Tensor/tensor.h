@@ -160,9 +160,11 @@ std::unique_ptr<Tensor> TmulScalar(const Tensor& in, float s);
 std::unique_ptr<Tensor> TaddScalar(const Tensor& in, float s);
 std::unique_ptr<Tensor> TsumCols(const Tensor& t);
 
+std::unique_ptr<Tensor> TaddBias(const Tensor& mat, const Tensor& bias);
 // ---------------- CUDA ops (NEW API) ----------------
 #ifdef USE_CUDA
 
+void TupdateGPU(Tensor& W, const Tensor& dW, float lr);
 std::unique_ptr<Tensor> TaddGPU(Tensor& A, Tensor& B);
 std::unique_ptr<Tensor> TsubGPU(Tensor& A, Tensor& B);
 std::unique_ptr<Tensor> TmulGPU(Tensor& A, Tensor& B);

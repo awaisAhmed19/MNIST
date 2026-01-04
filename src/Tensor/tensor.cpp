@@ -55,6 +55,7 @@ std::unique_ptr<Tensor> Tcopy(const Tensor& src) {
 // CPU Ops (new tensors)
 
 std::unique_ptr<Tensor> TsumCols(const Tensor& t) {
+    TtoHost(const_cast<Tensor&>(t));
     auto out = std::make_unique<Tensor>(t.rows, 1);
 
     for (int r = 0; r < t.rows; r++) {
@@ -139,6 +140,7 @@ std::unique_ptr<Tensor> Tmatmul(const Tensor& a, const Tensor& b) {
         }
 
     C->dirty_device = true;
+
     return C;
 #endif
 }
@@ -308,12 +310,31 @@ void TRandomize(Tensor& t, float fan_in) {
     t.dirty_device = true;
 }
 
+std::unique_ptr<Tensor> TaddBias(const Tensor& mat, const Tensor& bias) {
+    if (bias.cols != 1 || bias.rows != mat.rows) throw std::runtime_error("Bias shape mismatch");
+
+    auto out = std::make_unique<Tensor>(mat.rows, mat.cols);
+
+    TtoHost(const_cast<Tensor&>(mat));
+    TtoHost(const_cast<Tensor&>(bias));
+
+    for (int r = 0; r < mat.rows; r++) {
+        float b = bias.h_data[r];
+        for (int c = 0; c < mat.cols; c++)
+            out->h_data[r * mat.cols + c] = mat.h_data[r * mat.cols + c] + b;
+    }
+
+    out->dirty_device = true;
+    return out;
+}
+
 float Tuni_dist_std(float l, float h) {
     static thread_local std::mt19937 rng(std::random_device{}());
     std::uniform_real_distribution<float> dist(l, h);
     return dist(rng);
 }
 int TArgmax(const Tensor& t) {
+    TtoHost(const_cast<Tensor&>(t));
     int idx = 0;
     float maxv = t.h_data[0];
 
@@ -331,6 +352,7 @@ int TArgmax(const Tensor& t) {
 // ---------------------------
 
 void TPrint(const Tensor& t) {
+    TtoHost(const_cast<Tensor&>(t));
     std::cout << "Tensor (" << t.rows << " x " << t.cols << ")\n";
     for (int r = 0; r < t.rows; r++) {
         for (int c = 0; c < t.cols; c++)

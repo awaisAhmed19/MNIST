@@ -30,25 +30,6 @@ NeuralNetwork* Create(int input, int hidden, int output, float lr) {
     std::vector<int> layers = {input, hidden, output};
     return new NeuralNetwork(layers, lr);
 }
-
-std::unique_ptr<Tensor> TaddBias(const Tensor& mat, const Tensor& bias) {
-    if (bias.cols != 1 || bias.rows != mat.rows) throw std::runtime_error("Bias shape mismatch");
-
-    auto out = std::make_unique<Tensor>(mat.rows, mat.cols);
-
-    TtoHost(const_cast<Tensor&>(mat));
-    TtoHost(const_cast<Tensor&>(bias));
-
-    for (int r = 0; r < mat.rows; r++) {
-        float b = bias.h_data[r];
-        for (int c = 0; c < mat.cols; c++)
-            out->h_data[r * mat.cols + c] = mat.h_data[r * mat.cols + c] + b;
-    }
-
-    out->dirty_device = true;
-    return out;
-}
-
 std::unique_ptr<Tensor> stack_batch_inputs(const std::vector<Filer::Img>& dataset, int start,
                                            int batch_size) {
     int cols = batch_size;
@@ -159,7 +140,7 @@ void update_params(NeuralNetwork* net, const BackwardCache& grads) {
         auto scaledW = TmulScalar(*grads.dW[i], net->learningRate);
         auto scaledB = TmulScalar(*grads.dB[i], net->learningRate);
 
-        net->weights[i] = Tsub(*net->weights[i], *scaledW);
+        TupdateGPU(*net->weights[i], *grads.dW[i], net->learningRate);
         net->biases[i] = Tsub(*net->biases[i], *scaledB);
     }
 }

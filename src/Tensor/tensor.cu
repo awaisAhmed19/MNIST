@@ -146,7 +146,28 @@ __global__ void k_transpose(const float* A, float* B,
         B[c * rows + r] = A[r * cols + c];
 }
 
+__global__ void k_update(float* w, const float* grad, float lr, int n)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
+        w[i] -= lr * grad[i];
+}
+
 //  GPU Ops (unique_ptr everywhere)
+void TupdateGPU(Tensor& W, const Tensor& dW, float lr)
+{
+    TtoDevice(W);
+    TtoDevice(const_cast<Tensor&>(dW));
+
+    int n = W.size();
+    int threads = 256;
+    int blocks = (n + threads - 1) / threads;
+
+    k_update<<<blocks, threads>>>(W.d_data, dW.d_data, lr, n);
+    cudaDeviceSynchronize();
+
+    W.dirty_host = true;
+}
 
 std::unique_ptr<Tensor> TaddGPU(Tensor& A, Tensor& B) {
     auto C = std::make_unique<Tensor>(A.rows, A.cols);

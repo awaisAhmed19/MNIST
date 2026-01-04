@@ -92,6 +92,8 @@ std::unique_ptr<Tensor> Filer::load_single_image(const std::string& filename) {
     return tensor;
 }
 void Filer::save_tensor(const Tensor* t, const std::string& file_name) {
+    TtoHost(*const_cast<Tensor*>(t));
+
     std::ofstream file(file_name);
 
     if (!file.is_open()) {
