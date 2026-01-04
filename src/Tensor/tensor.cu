@@ -1,11 +1,6 @@
 #include <cuda_runtime.h>
-#include <cstdlib>
 #include <memory>
 #include "tensor.h"
-
-#define CUDA_CHECK(x) do { cudaError_t err = (x); if (err != cudaSuccess) { \
-    printf("CUDA error %s:%d: %s\n", __FILE__, __LINE__, cudaGetErrorString(err)); \
-    exit(1); }} while (0)
 
 //  Synchronization
 
