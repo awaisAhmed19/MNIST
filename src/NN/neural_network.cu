@@ -1,86 +1,113 @@
 #include "neural_network.h"
 #include "../Tensor/tensor.h"
 
-void Train_gpu(NeuralNetwork* net, Tensor* X, Tensor* Y)
+// GPU Forward Pass (batch)
+
+ForwardCache forward_pass_gpu(NeuralNetwork* net, Tensor* X)
 {
     int L = net->layers.size() - 1;
 
-    TtoDevice(X);
-    TtoDevice(Y);
+    ForwardCache cache;
+    cache.activations.reserve(L + 1);
+    cache.zvals.reserve(L);
 
-    for (int i = 0; i < L; ++i) {
-        TtoDevice(net->weights[i].get());
-        TtoDevice(net->biases[i].get());
-    }
+    cache.activations.push_back(std::make_unique<Tensor>(*X));
+    Tensor* a = cache.activations.back().get();
 
-    std::vector<Tensor*> activation(L + 1);
-    std::vector<Tensor*> zvals(L);
-
-    activation[0] = TcopyGPU(X);
-
-    // ---------- FORWARD ----------
     for (int i = 0; i < L; i++) {
 
-        Tensor* z      = TmatmulGPU(activation[i], net->weights[i].get());
-        Tensor* z_bias = TaddGPU(z, net->biases[i].get());
+        // z = W[i] * a + b[i]
+        auto z = TmatmulGPU(*net->weights[i], *a);
+        auto z_bias = Tadd(*z, *net->biases[i]);   // bias add done on host (safe)
 
-        zvals[i] = TcopyGPU(z_bias);
+        cache.zvals.push_back(Tcopy(*z_bias));
 
-        Tensor* act = TSigmoidGPU(zvals[i]);
-        activation[i + 1] = act;
+        if (i == L - 1) {
+            auto out = TSoftmaxCols(*z_bias);
+            cache.activations.push_back(std::move(out));
+        }
+        else {
+            auto out = Tcopy(*z_bias);
+            TRelu(*out);
+            cache.activations.push_back(std::move(out));
+        }
+
+        a = cache.activations.back().get();
     }
 
-    // ---------- BACKWARD ----------
-    std::vector<Tensor*> grad(L);
-    std::vector<Tensor*> deltaW(L);
-    std::vector<Tensor*> deltaB(L);
+    return cache;
+}
 
-    Tensor* error = TsubGPU(activation[L], Y);
+// GPU Backward Pass (batch)
 
-    Tensor* sp = TSigmoidPrimeGPU(zvals[L - 1]);
-    grad[L - 1] = TmulGPU(error, sp);      // elementwise
+BackwardCache backward_pass_gpu(
+    NeuralNetwork* net,
+    const ForwardCache& cache,
+    Tensor* Y
+) {
+    int L = net->layers.size() - 1;
+    BackwardCache grads;
 
-    Tensor* a_prev_T = TtransposeGPU(activation[L - 1]);
-    deltaW[L - 1] = TscaleGPU(
-        TmatmulGPU(grad[L - 1], a_prev_T),
-        net->learningRate
-    );
+    grads.dW.resize(L);
+    grads.dB.resize(L);
 
-    deltaB[L - 1] = TscaleGPU(grad[L - 1], net->learningRate);
+    std::vector<std::unique_ptr<Tensor>> dZ(L);
 
-    for (int i = L - 2; i >= 0; --i) {
+    int batch = Y->cols;
+    float scale = 1.0f / batch;
 
-        Tensor* wT = TtransposeGPU(net->weights[i + 1].get());
-        Tensor* err = TmatmulGPU(wT, grad[i + 1]);
+    // Output layer
+    dZ[L - 1] = Tsub(*cache.activations[L], *Y);
 
-        Tensor* sp_i = TSigmoidPrimeGPU(zvals[i]);
-        grad[i] = TmulGPU(err, sp_i);
+    auto aPrevT = Ttranspose(*cache.activations[L - 1]);
 
-        Tensor* aT = TtransposeGPU(activation[i]);
-        deltaW[i] = TscaleGPU(
-            TmatmulGPU(grad[i], aT),
-            net->learningRate
-        );
+    grads.dW[L - 1] =
+        TmulScalar(*TmatmulGPU(*dZ[L - 1], *aPrevT), scale);
 
-        deltaB[i] = TscaleGPU(grad[i], net->learningRate);
+    grads.dB[L - 1] =
+        TmulScalar(*TsumCols(*dZ[L - 1]), scale);
+
+    // Hidden layers
+    for (int i = L - 2; i >= 0; i--) {
+
+        auto wT = Ttranspose(*net->weights[i + 1]);
+        auto tmp = TmatmulGPU(*wT, *dZ[i + 1]);
+
+        auto prime = Tcopy(*cache.zvals[i]);
+        TReluPrime(*prime);
+
+        dZ[i] = Tmul(*tmp, *prime);
+
+        auto aT = Ttranspose(*cache.activations[i]);
+
+        grads.dW[i] =
+            TmulScalar(*TmatmulGPU(*dZ[i], *aT), scale);
+
+        grads.dB[i] =
+            TmulScalar(*TsumCols(*dZ[i]), scale);
     }
 
-    // ---------- UPDATE ----------
-    for (int i = 0; i < L; ++i) {
+    return grads;
+}
 
-        Tensor* w_new = TaddGPU(net->weights[i].get(), deltaW[i]);
-        Tensor* b_new = TaddGPU(net->biases[i].get(), deltaB[i]);
+// GPU Training Wrapper
 
-        TtoHost(w_new);
-        TtoHost(b_new);
+void Train_gpu(NeuralNetwork* net, Tensor* X, Tensor* Y)
+{
+    auto cache = forward_pass_gpu(net, X);
+    auto grads = backward_pass_gpu(net, cache, Y);
 
-        memcpy(net->weights[i]->h_data, w_new->h_data,
-               sizeof(float) * Tsize(net->weights[i].get()));
+    int L = net->layers.size() - 1;
 
-        memcpy(net->biases[i]->h_data, b_new->h_data,
-               sizeof(float) * Tsize(net->biases[i].get()));
+    for (int i = 0; i < L; i++) {
 
-        net->weights[i]->dirty_device = true;
-        net->biases[i]->dirty_device  = true;
+        auto scaledW =
+            TmulScalar(*grads.dW[i], net->learningRate);
+
+        auto scaledB =
+            TmulScalar(*grads.dB[i], net->learningRate);
+
+        net->weights[i] = Tsub(*net->weights[i], *scaledW);
+        net->biases[i]  = Tsub(*net->biases[i], *scaledB);
     }
 }
