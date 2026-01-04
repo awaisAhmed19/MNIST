@@ -2,21 +2,20 @@
 #ifdef USE_CUDA
 
 #include <cuda_runtime_api.h>
-#endif  // USE_CUDA
-
-#include <cassert>
-#include <iostream>
-#include <memory>
-#include <random>
-#include <string>
 #define CUDA_CHECK(err)                                                                \
     if (err != cudaSuccess) {                                                          \
         printf("CUDA ERROR %s:%d: %s\n", __FILE__, __LINE__, cudaGetErrorString(err)); \
         exit(1);                                                                       \
     }
+#endif  // USE_CUDA
+
+#include <cassert>
 #include <cstring>
 #include <iostream>
+#include <memory>
+#include <random>
 #include <stdexcept>
+#include <string>
 
 struct Tensor {
     int rows;
@@ -43,7 +42,7 @@ struct Tensor {
         h_data = new float[size]();
 
 #ifdef USE_CUDA
-        cudaMalloc(&d_data, size * sizeof(float));
+        cudaMalloc((void**)&d_data, size * sizeof(float));
         cudaMemset(d_data, 0, size * sizeof(float));
 #endif
     }
@@ -66,7 +65,7 @@ struct Tensor {
 
 #ifdef USE_CUDA
         if (other.d_data) {
-            cudaMalloc(&d_data, size * sizeof(float));
+            cudaMalloc((void**)&d_data, size * sizeof(float));
             cudaMemcpy(d_data, other.d_data, size * sizeof(float), cudaMemcpyDeviceToDevice);
         } else {
             d_data = nullptr;
@@ -108,7 +107,7 @@ struct Tensor {
 
 #ifdef USE_CUDA
         if (other.d_data) {
-            cudaMalloc(&d_data, size * sizeof(float));
+            cudaMalloc((void**)&d_data, size * sizeof(float));
             cudaMemcpy(d_data, other.d_data, size * sizeof(float), cudaMemcpyDeviceToDevice);
         } else {
             d_data = nullptr;
@@ -123,9 +122,6 @@ struct Tensor {
         return *this;
     }
 
-    // ------------------------------------
-    // Move Assignment Operator
-    // ------------------------------------
     Tensor& operator=(Tensor&& other) noexcept {
         if (this == &other) return *this;
 
@@ -180,8 +176,38 @@ std::unique_ptr<Tensor> TmulScalar(const Tensor& in, float s);
 std::unique_ptr<Tensor> TaddScalar(const Tensor& in, float s);
 
 std::unique_ptr<Tensor> TsumCols(const Tensor& t);
-// activations
+#ifdef USE_CUDA
+Tensor* TcreateGPU(int r, int c);
+Tensor* TcopyGPU(Tensor* src);
 
+inline int Tsize(const Tensor* t) { return t->rows * t->cols; }
+__global__ void k_add(const float* a, const float* b, float* out, int n);
+Tensor* TaddGPU(Tensor* A, Tensor* B);
+__global__ void k_sub(const float* a, const float* b, float* out, int n);
+Tensor* TsubGPU(Tensor* A, Tensor* B);
+
+__global__ void k_mul(const float* a, const float* b, float* out, int n);
+Tensor* TmulGPU(Tensor* A, Tensor* B);
+__global__ void k_matmul(const float* A, const float* B, float* C, int M, int K, int N);
+Tensor* TmatmulGPU(Tensor* A, Tensor* B);
+__global__ void k_scale(const float* a, float s, float* out, int n);
+Tensor* TscaleGPU(Tensor* A, float s);
+__global__ void k_sigmoid(float* x, float* out, int n);
+Tensor* TSigmoidGPU(Tensor* A);
+__global__ void k_sigmoid_prime(const float* x, float* out, int n);
+Tensor* TSigmoidPrimeGPU(Tensor* A);
+__global__ void k_relu(float* x, int n);
+void TReluGPU(Tensor* A);
+__global__ void k_relu_prime(const float* x, float* out, int n);
+Tensor* TReluPrimeGPU(Tensor* A);
+__global__ void k_softmax_rows(float* x, float* out, int rows, int cols);
+Tensor* TSoftmaxRowsGPU(Tensor* A);
+__global__ void k_softmax_cols(float* x, float* out, int rows, int cols);
+Tensor* TSoftmaxColsGPU(Tensor* A);
+__global__ void k_transpose(const float* A, float* B, int rows, int cols);
+Tensor* TtransposeGPU(Tensor* A);
+#endif
+// activations
 std::unique_ptr<Tensor> TSigmoid(const Tensor& src);
 std::unique_ptr<Tensor> TSigmoidPrime(const Tensor& src);
 void TRelu(Tensor& t);

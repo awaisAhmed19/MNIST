@@ -1,126 +1,165 @@
+
 #!/bin/bash
 set -e
 
-echo "Starting MNIST build script..."
+echo "🚀 MNIST Build Script"
+
+# ASK FOR MODE
+echo ""
+echo "Select build mode:"
+echo "  1) CPU   (Raylib UI, no CUDA)"
+echo "  2) Colab (CUDA ON, no Raylib)"
+echo ""
+
+read -p "Enter choice (1/2): " MODE_CHOICE
+
+if [ "$MODE_CHOICE" == "1" ]; then
+    MODE="cpu"
+elif [ "$MODE_CHOICE" == "2" ]; then
+    MODE="colab"
+else
+    echo "❌ Invalid choice. Use 1 or 2."
+    exit 1
+fi
+
+echo "✔ Selected mode: $MODE"
+echo ""
 
 OS_TYPE="$(uname)"
 echo "Detected OS: $OS_TYPE"
 
+
+# DEPENDENCIES
 install_deps_linux() {
+
   echo "Checking dependencies on Linux..."
 
-  # Detect distro
   if [ -f /etc/os-release ]; then
     . /etc/os-release
     DISTRO=$ID
   else
-    echo "Can't detect distro. /etc/os-release not found."
+    echo "Can't detect distro. Exiting."
     exit 1
   fi
 
-  # Define dependencies
-  DEPS=(g++ cmake make )
+
+DEPS=(cmake make)
+
   UPDATE_CMD=""
   INSTALL_CMD=""
   PKG_CHECK=""
 
-  # Pick installer based on distro
   case "$DISTRO" in
-  ubuntu | debian)
-    PKG_CHECK="dpkg -s"
-    INSTALL_CMD="sudo apt-get install -y"
-    UPDATE_CMD="sudo apt-get update"
-    ;;
-  arch | manjaro)
+    ubuntu|debian)
+      PKG_CHECK="dpkg -s"
+      INSTALL_CMD="sudo apt-get install -y"
+      UPDATE_CMD="sudo apt-get update"
+      DEPS+=(g++)
+      ;;
+
+arch|manjaro)
     PKG_CHECK="pacman -Qi"
     INSTALL_CMD="sudo pacman -S --noconfirm"
     UPDATE_CMD="sudo pacman -Sy"
-    DEPS=(gcc cmake make glfw raylib)
+    DEPS+=(gcc)
     ;;
-  fedora)
-    PKG_CHECK="rpm -q"
-    INSTALL_CMD="sudo dnf install -y"
-    UPDATE_CMD="sudo dnf check-update || true"
-    DEPS=(gcc-c++ cmake make glfw-devel raylib-devel)
-    ;;
-  *)
-    echo "Unsupported distro: $DISTRO"
-    exit 1
-    ;;
+
+    fedora)
+      PKG_CHECK="rpm -q"
+      INSTALL_CMD="sudo dnf install -y"
+      UPDATE_CMD="sudo dnf check-update || true"
+       DEPS+=(gcc-c++)
+      ;;
+    *)
+      echo "Unsupported distro: $DISTRO"
+      exit 1
+      ;;
   esac
 
-  # Check missing packages
-  MISSING_PKGS=()
+  # Raylib only for CPU mode
+  if [ "$MODE" == "cpu" ]; then
+    case "$DISTRO" in
+      ubuntu|debian) DEPS+=(libraylib-dev) ;;
+      arch|manjaro)  DEPS+=(glfw raylib) ;;
+      fedora)        DEPS+=(glfw-devel raylib-devel) ;;
+    esac
+  fi
+
+  MISSING=()
   for pkg in "${DEPS[@]}"; do
     if ! $PKG_CHECK "$pkg" &>/dev/null; then
-      MISSING_PKGS+=("$pkg")
+      MISSING+=("$pkg")
     fi
   done
 
-  if [ ${#MISSING_PKGS[@]} -eq 0 ]; then
-    echo "All dependencies already installed."
-  else
-    echo "Missing packages: ${MISSING_PKGS[*]}"
-    echo "Updating package database..."
+  if [ ${#MISSING[@]} -gt 0 ]; then
+    echo "Installing missing packages: ${MISSING[*]}"
     $UPDATE_CMD
-    echo "Installing missing dependencies..."
-    $INSTALL_CMD "${MISSING_PKGS[@]}"
+    $INSTALL_CMD "${MISSING[@]}"
+  else
+    echo "All required packages installed."
   fi
 }
 
+
 install_deps_macos() {
+
   echo "Checking dependencies on macOS..."
+
   if ! command -v brew &>/dev/null; then
-    echo "Homebrew not found. Installing..."
+    echo "Homebrew missing — installing..."
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   fi
 
-  DEPS=(cmake raylib)
-  MISSING_PKGS=()
+  DEPS=(cmake)
+
+  if [ "$MODE" == "cpu" ]; then
+    DEPS+=(raylib)
+  fi
 
   for pkg in "${DEPS[@]}"; do
     if ! brew list "$pkg" &>/dev/null; then
-      MISSING_PKGS+=("$pkg")
+      brew install "$pkg"
     fi
   done
-
-  if [ ${#MISSING_PKGS[@]} -eq 0 ]; then
-    echo "All dependencies already installed."
-  else
-    echo "Installing missing packages: ${MISSING_PKGS[*]}"
-    brew install "${MISSING_PKGS[@]}"
-  fi
 }
 
+
 case "$OS_TYPE" in
-Linux*) install_deps_linux ;;
-Darwin*) install_deps_macos ;;
-*)
-  echo "Unsupported OS: $OS_TYPE. Please install dependencies manually."
-  exit 1
-  ;;
+  Linux*) install_deps_linux ;;
+  Darwin*) install_deps_macos ;;
+  *) echo "Unsupported OS."; exit 1 ;;
 esac
 
-DATA_DIR="data"
-if [ ! -d "$DATA_DIR" ] && [ -f "data.zip" ]; then
+
+# DATA
+if [ ! -d "data" ] && [ -f "data.zip" ]; then
   echo "Unzipping dataset..."
   unzip -q data.zip -d .
 fi
 
+
+# BUILD
 BUILD_DIR="build"
-if [ ! -d "$BUILD_DIR" ]; then
-  echo "Creating build directory..."
-  mkdir -p "$BUILD_DIR"
+rm -rf "$BUILD_DIR"
+mkdir -p "$BUILD_DIR"
+
+echo "Configuring CMake (MODE=$MODE)..."
+
+if [ "$MODE" == "cpu" ]; then
+    cmake -S . -B "$BUILD_DIR" -DMODE=cpu
+else
+    cmake -S . -B "$BUILD_DIR" -DMODE=colab
 fi
 
-echo "Running CMake..."
-cmake -S . -B "$BUILD_DIR" -DUSE_CUDA=OFF
 cmake --build "$BUILD_DIR"
 
+
+# RUN
 if [ -f "./bin/mnist" ]; then
-  echo "Running MNIST binary..."
+  echo "Running MNIST..."
   ./bin/mnist
 else
-  echo "Error: Binary not found at ./bin/mnist"
+  echo "❌ Binary not found at ./bin/mnist"
   exit 1
 fi

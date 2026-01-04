@@ -1,109 +1,86 @@
 #include "neural_network.h"
+#include "../Tensor/tensor.h"
 
-
-void Train_gpu(NeuralNetwork* net, Matrix<float>& X, Matrix<float>& Y) {
+void Train_gpu(NeuralNetwork* net, Tensor* X, Tensor* Y)
+{
     int L = net->layers.size() - 1;
 
-    // Make sure ALL model params + inputs are on GPU
-    X.allocate_gpu();
-    X.copy_to_gpu();
-
-    Y.allocate_gpu();
-    Y.copy_to_gpu();
+    TtoDevice(X);
+    TtoDevice(Y);
 
     for (int i = 0; i < L; ++i) {
-        net->weights[i].allocate_gpu();
-        net->weights[i].copy_to_gpu();
-
-        net->biases[i].allocate_gpu();
-        net->biases[i].copy_to_gpu();
+        TtoDevice(net->weights[i].get());
+        TtoDevice(net->biases[i].get());
     }
 
-    std::vector<Matrix<float>> activation;
-    std::vector<Matrix<float>> zvals;
+    std::vector<Tensor*> activation(L + 1);
+    std::vector<Tensor*> zvals(L);
 
-    activation.push_back(X);
-    Matrix<float> a = X;
+    activation[0] = TcopyGPU(X);
 
-    // FORWARD
+    // ---------- FORWARD ----------
     for (int i = 0; i < L; i++) {
-        // sync 'a' to GPU before using
-        a.allocate_gpu();
-        a.copy_to_gpu();
 
-        Matrix<float> z = net->weights[i].dot_gpu(a).add_gpu(net->biases[i]);
-        Matrix<float> a_next = z.sigmoid_gpu();
+        Tensor* z      = TmatmulGPU(activation[i], net->weights[i].get());
+        Tensor* z_bias = TaddGPU(z, net->biases[i].get());
 
-        zvals.push_back(z);  // CPU copies for grad calc
-        activation.push_back(a_next);
+        zvals[i] = TcopyGPU(z_bias);
 
-        a = a_next;
+        Tensor* act = TSigmoidGPU(zvals[i]);
+        activation[i + 1] = act;
     }
 
-    std::vector<Matrix<float>> grad(L);
-    std::vector<Matrix<float>> deltaW(L);
-    std::vector<Matrix<float>> deltaB(L);
+    // ---------- BACKWARD ----------
+    std::vector<Tensor*> grad(L);
+    std::vector<Tensor*> deltaW(L);
+    std::vector<Tensor*> deltaB(L);
 
-    // Output error: A_L - Y
-    activation[L].allocate_gpu();
-    activation[L].copy_to_gpu();
-    Y.allocate_gpu();
-    Y.copy_to_gpu();
+    Tensor* error = TsubGPU(activation[L], Y);
 
-    Matrix<float> error = activation[L].sub_gpu(Y);
+    Tensor* sp = TSigmoidPrimeGPU(zvals[L - 1]);
+    grad[L - 1] = TmulGPU(error, sp);      // elementwise
 
-    zvals[L - 1].allocate_gpu();
-    zvals[L - 1].copy_to_gpu();
+    Tensor* a_prev_T = TtransposeGPU(activation[L - 1]);
+    deltaW[L - 1] = TscaleGPU(
+        TmatmulGPU(grad[L - 1], a_prev_T),
+        net->learningRate
+    );
 
-    grad[L - 1] = error.mul_gpu(zvals[L - 1].sigmoid_prime_gpu());
+    deltaB[L - 1] = TscaleGPU(grad[L - 1], net->learningRate);
 
-    activation[L - 1].allocate_gpu();
-    activation[L - 1].copy_to_gpu();
+    for (int i = L - 2; i >= 0; --i) {
 
-    deltaW[L - 1] =
-        grad[L - 1].dot_gpu(activation[L - 1].transpose_gpu()).scaled_gpu(net->learningRate);
-    deltaB[L - 1] = grad[L - 1].scaled_gpu(net->learningRate);
+        Tensor* wT = TtransposeGPU(net->weights[i + 1].get());
+        Tensor* err = TmatmulGPU(wT, grad[i + 1]);
 
-    // HIDDEN LAYERS
-    for (int i = L - 2; i >= 0; i--) {
-        net->weights[i + 1].allocate_gpu();
-        net->weights[i + 1].copy_to_gpu();
+        Tensor* sp_i = TSigmoidPrimeGPU(zvals[i]);
+        grad[i] = TmulGPU(err, sp_i);
 
-        grad[i + 1].allocate_gpu();
-        grad[i + 1].copy_to_gpu();
+        Tensor* aT = TtransposeGPU(activation[i]);
+        deltaW[i] = TscaleGPU(
+            TmatmulGPU(grad[i], aT),
+            net->learningRate
+        );
 
-        Matrix<float> wT = net->weights[i + 1].transpose_gpu();
-        Matrix<float> err = wT.dot_gpu(grad[i + 1]);
-
-        zvals[i].allocate_gpu();
-        zvals[i].copy_to_gpu();
-
-        Matrix<float> g = err.mul_gpu(zvals[i].sigmoid_prime_gpu());
-        grad[i] = g;
-
-        activation[i].allocate_gpu();
-        activation[i].copy_to_gpu();
-
-        deltaW[i] = g.dot_gpu(activation[i].transpose_gpu()).scaled_gpu(net->learningRate);
-        deltaB[i] = g.scaled_gpu(net->learningRate);
+        deltaB[i] = TscaleGPU(grad[i], net->learningRate);
     }
 
-    // UPDATE
-    for (int i = 0; i < L; i++) {
-        net->weights[i].allocate_gpu();
-        net->weights[i].copy_to_gpu();
+    // ---------- UPDATE ----------
+    for (int i = 0; i < L; ++i) {
 
-        deltaW[i].allocate_gpu();
-        deltaW[i].copy_to_gpu();
+        Tensor* w_new = TaddGPU(net->weights[i].get(), deltaW[i]);
+        Tensor* b_new = TaddGPU(net->biases[i].get(), deltaB[i]);
 
-        net->weights[i] = net->weights[i].add_gpu(deltaW[i]);
+        TtoHost(w_new);
+        TtoHost(b_new);
 
-        net->biases[i].allocate_gpu();
-        net->biases[i].copy_to_gpu();
+        memcpy(net->weights[i]->h_data, w_new->h_data,
+               sizeof(float) * Tsize(net->weights[i].get()));
 
-        deltaB[i].allocate_gpu();
-        deltaB[i].copy_to_gpu();
+        memcpy(net->biases[i]->h_data, b_new->h_data,
+               sizeof(float) * Tsize(net->biases[i].get()));
 
-        net->biases[i] = net->biases[i].add_gpu(deltaB[i]);
+        net->weights[i]->dirty_device = true;
+        net->biases[i]->dirty_device  = true;
     }
 }

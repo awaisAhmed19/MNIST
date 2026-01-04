@@ -7,9 +7,9 @@
 #include "./NN/neural_network.h"
 #include "Filer.h"
 
-constexpr int TRAIN_SAMPLES = 800;
-constexpr int TEST_SAMPLES = 200;
-constexpr int EVAL_SAMPLES = 200;
+constexpr int TRAIN_SAMPLES = 48000;
+constexpr int TEST_SAMPLES = 12000;
+constexpr int EVAL_SAMPLES = 12000;
 
 constexpr int EPOCHS = 25;
 constexpr int BATCH_SIZE = 64;
@@ -29,8 +29,8 @@ inline void check_file_exists(const std::string& path) {
 int main(int argc, char* argv[]) {
     const std::string project_root = PROJECT_ROOT;
 
-    const std::string train_csv = project_root + "/data/mnist10k/train_final.csv";
-    const std::string val_csv = project_root + "/data/mnist10k/val_final.csv";
+    const std::string train_csv = project_root + "/data/mnist60k/train_final.csv";
+    const std::string val_csv = project_root + "/data/mnist60k/val_final.csv";
     const std::string model_dir = project_root + "/testing";
 
     check_file_exists(train_csv);

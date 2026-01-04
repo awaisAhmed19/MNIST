@@ -1,17 +1,10 @@
 #include <cuda_runtime.h>
-#include <cstdio>
 #include <cstdlib>
 #include <algorithm>
 #include "tensor.h"
 
-#define CUDA_CHECK(err) \
-    do { if ((err) != cudaSuccess) { \
-        fprintf(stderr, "CUDA ERROR %s:%d: %s\n", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        exit(1); } } while(0)
-
-inline int Tsize(const Tensor* t) { return t->rows * t->cols; }
 //---memory-----
-Tensor* Tcreate(int r, int c) {
+Tensor* TcreateGPU(int r, int c) {
     if (r <= 0 || c <= 0) return nullptr;
     Tensor* t = (Tensor*) malloc(sizeof(Tensor));
     t->rows = r;
@@ -30,6 +23,29 @@ void Tfree(Tensor* t) {
     free(t->h_data);
     CUDA_CHECK(cudaFree(t->d_data));
     free(t);
+}
+Tensor* TcopyGPU(Tensor* src)
+{
+    if (!src) return nullptr;
+
+    Tensor* out = TcreateGPU(src->rows, src->cols);
+
+    if (src->dirty_device)
+        TtoDevice(src);
+
+    int n = Tsize(src);
+
+    CUDA_CHECK(cudaMemcpy(
+        out->d_data,
+        src->d_data,
+        n * sizeof(float),
+        cudaMemcpyDeviceToDevice
+    ));
+
+    out->dirty_device = false;
+    out->dirty_host   = true;
+
+    return out;
 }
 
 void TtoDevice(Tensor* t) {
@@ -55,7 +71,7 @@ Tensor* TaddGPU(Tensor* A, Tensor* B) {
     if (!A || !B) return nullptr;
     if (A->rows != B->rows || A->cols != B->cols) return nullptr;
     int n = Tsize(A);
-    Tensor* C = Tcreate(A->rows, A->cols);
+    Tensor* C = TcreateGPU(A->rows, A->cols);
 
     if (A->dirty_device) TtoDevice(A);
     if (B->dirty_device) TtoDevice(B);
@@ -78,7 +94,7 @@ Tensor* TsubGPU(Tensor* A, Tensor* B) {
     if (A->rows != B->rows || A->cols != B->cols) return nullptr;
 
     int n = Tsize(A);
-    Tensor* C = Tcreate(A->rows, A->cols);
+    Tensor* C = TcreateGPU(A->rows, A->cols);
 
     if (A->dirty_device) TtoDevice(A);
     if (B->dirty_device) TtoDevice(B);
@@ -95,6 +111,35 @@ Tensor* TsubGPU(Tensor* A, Tensor* B) {
     return C;
 }
 
+__global__ void k_mul(const float* a, const float* b, float* out, int n)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
+        out[i] = a[i] * b[i];
+}
+
+Tensor* TmulGPU(Tensor* A, Tensor* B)
+{
+    if (!A || !B) return nullptr;
+    if (A->rows != B->rows || A->cols != B->cols) return nullptr;
+
+    int n = Tsize(A);
+    Tensor* C = TcreateGPU(A->rows, A->cols);
+
+    if (A->dirty_device) TtoDevice(A);
+    if (B->dirty_device) TtoDevice(B);
+
+    int block = 256;
+    int grid  = (n + block - 1) / block;
+
+    k_mul<<<grid, block>>>(A->d_data, B->d_data, C->d_data, n);
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    C->dirty_device = false;
+    C->dirty_host   = true;
+
+    return C;
+}
 __global__ void k_matmul(const float* A, const float* B, float* C, int M, int K, int N) {
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
@@ -111,7 +156,7 @@ Tensor* TmatmulGPU(Tensor* A, Tensor* B) {
     if (!A || !B) return nullptr;
     int M = A->rows, K = A->cols, K2 = B->rows, N = B->cols;
     if (K != K2) return nullptr;
-    Tensor* C = Tcreate(M, N);
+    Tensor* C = TcreateGPU(M, N);
 
     if (A->dirty_device) TtoDevice(A);
     if (B->dirty_device) TtoDevice(B);
@@ -122,5 +167,228 @@ Tensor* TmatmulGPU(Tensor* A, Tensor* B) {
     CUDA_CHECK(cudaDeviceSynchronize());
     C->dirty_device = false;
     C->dirty_host = true;
+    return C;
+}
+
+__global__ void k_scale(const float* a, float s, float* out, int n)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
+        out[i] = a[i] * s;
+}
+
+Tensor* TscaleGPU(Tensor* A, float s)
+{
+    if (!A) return nullptr;
+
+    int n = Tsize(A);
+    Tensor* C = TcreateGPU(A->rows, A->cols);
+
+    if (A->dirty_device) TtoDevice(A);
+
+    int block = 256;
+    int grid  = (n + block - 1) / block;
+
+    k_scale<<<grid, block>>>(A->d_data, s, C->d_data, n);
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    C->dirty_device = false;
+    C->dirty_host   = true;
+
+    return C;
+}
+//activation functions
+
+__global__ void k_sigmoid(float* x, float* out, int n)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
+        out[i] = 1.0f / (1.0f + expf(-x[i]));
+}
+
+Tensor* TSigmoidGPU(Tensor* A)
+{
+    int n = Tsize(A);
+    Tensor* C = TcreateGPU(A->rows, A->cols);
+
+    if (A->dirty_device) TtoDevice(A);
+
+    int block = 256;
+    int grid  = (n + block - 1) / block;
+
+    k_sigmoid<<<grid, block>>>(A->d_data, C->d_data, n);
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    C->dirty_device = false;
+    C->dirty_host   = true;
+
+    return C;
+}
+__global__ void k_sigmoid_prime(const float* x, float* out, int n)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
+    {
+        float s = 1.0f / (1.0f + expf(-x[i]));
+        out[i]  = s * (1.0f - s);
+    }
+}
+
+Tensor* TSigmoidPrimeGPU(Tensor* A)
+{
+    int n = Tsize(A);
+    Tensor* C = TcreateGPU(A->rows, A->cols);
+
+    if (A->dirty_device) TtoDevice(A);
+
+    int block = 256;
+    int grid  = (n + block - 1) / block;
+
+    k_sigmoid_prime<<<grid, block>>>(A->d_data, C->d_data, n);
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    C->dirty_device = false;
+    C->dirty_host   = true;
+
+    return C;
+}
+__global__ void k_relu(float* x, int n)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
+        x[i] = (x[i] < 0.0f ? 0.0f : x[i]);
+}
+
+void TReluGPU(Tensor* A)
+{
+    if (A->dirty_device) TtoDevice(A);
+
+    int n = Tsize(A);
+    int block = 256;
+    int grid  = (n + block - 1) / block;
+
+    k_relu<<<grid, block>>>(A->d_data, n);
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    A->dirty_device = false;
+    A->dirty_host   = true;
+}
+__global__ void k_relu_prime(const float* x, float* out, int n)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
+        out[i] = (x[i] > 0.0f ? 1.0f : 0.0f);
+}
+
+Tensor* TReluPrimeGPU(Tensor* A)
+{
+    if (A->dirty_device) TtoDevice(A);
+
+    int n = Tsize(A);
+    Tensor* C = TcreateGPU(A->rows, A->cols);
+
+    int block = 256;
+    int grid  = (n + block - 1) / block;
+
+    k_relu_prime<<<grid, block>>>(A->d_data, C->d_data, n);
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    C->dirty_device = false;
+    C->dirty_host   = true;
+
+    return C;
+}
+__global__ void k_softmax_rows(float* x, float* out, int rows, int cols)
+{
+    int r = blockIdx.x;
+    if (r >= rows) return;
+
+    float maxv = -INFINITY;
+    int base = r * cols;
+
+    for (int j = 0; j < cols; j++)
+        maxv = fmaxf(maxv, x[base + j]);
+
+    float sum = 0.0f;
+    for (int j = 0; j < cols; j++) {
+        float e = expf(x[base + j] - maxv);
+        out[base + j] = e;
+        sum += e;
+    }
+
+    for (int j = 0; j < cols; j++)
+        out[base + j] /= sum;
+}
+
+Tensor* TSoftmaxRowsGPU(Tensor* A)
+{
+    Tensor* C = TcreateGPU(A->rows, A->cols);
+    if (A->dirty_device) TtoDevice(A);
+
+    k_softmax_rows<<<A->rows, 1>>>(A->d_data, C->d_data, A->rows, A->cols);
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    C->dirty_device = false;
+    C->dirty_host   = true;
+
+    return C;
+}
+__global__ void k_softmax_cols(float* x, float* out, int rows, int cols)
+{
+    int c = blockIdx.x;
+    if (c >= cols) return;
+
+    float maxv = -INFINITY;
+
+    for (int r = 0; r < rows; r++)
+        maxv = fmaxf(maxv, x[r * cols + c]);
+
+    float sum = 0.0f;
+    for (int r = 0; r < rows; r++) {
+        float e = expf(x[r * cols + c] - maxv);
+        out[r * cols + c] = e;
+        sum += e;
+    }
+
+    for (int r = 0; r < rows; r++)
+        out[r * cols + c] /= sum;
+}
+
+Tensor* TSoftmaxColsGPU(Tensor* A)
+{
+    Tensor* C = TcreateGPU(A->rows, A->cols);
+    if (A->dirty_device) TtoDevice(A);
+
+    k_softmax_cols<<<A->cols, 1>>>(A->d_data, C->d_data, A->rows, A->cols);
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    C->dirty_device = false;
+    C->dirty_host   = true;
+
+    return C;
+}
+__global__ void k_transpose(const float* A, float* B, int rows, int cols)
+{
+    int r = blockIdx.y * blockDim.y + threadIdx.y;
+    int c = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (r < rows && c < cols)
+        B[c * rows + r] = A[r * cols + c];
+}
+
+Tensor* TtransposeGPU(Tensor* A)
+{
+    Tensor* C = TcreateGPU(A->cols, A->rows);
+    if (A->dirty_device) TtoDevice(A);
+
+    dim3 block(16, 16);
+    dim3 grid((A->cols + 15) / 16, (A->rows + 15) / 16);
+
+    k_transpose<<<grid, block>>>(A->d_data, C->d_data, A->rows, A->cols);
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    C->dirty_device = false;
+    C->dirty_host   = true;
+
     return C;
 }
