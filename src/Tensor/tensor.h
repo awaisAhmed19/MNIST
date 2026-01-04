@@ -172,48 +172,48 @@ std::unique_ptr<Tensor> Tadd(const Tensor& a, const Tensor& b);
 std::unique_ptr<Tensor> Tsub(const Tensor& a, const Tensor& b);
 std::unique_ptr<Tensor> Tmul(const Tensor& a, const Tensor& b);
 std::unique_ptr<Tensor> Tmatmul(const Tensor& A, const Tensor& B);
-std::unique_ptr<Tensor> TmulScalar(const Tensor& in, float s);
-std::unique_ptr<Tensor> TaddScalar(const Tensor& in, float s);
+std::unique_ptr<Tensor> TmulScalar(const Tensor& in, const float s);
+std::unique_ptr<Tensor> TaddScalar(const Tensor& in, const float s);
 
 std::unique_ptr<Tensor> TsumCols(const Tensor& t);
 #ifdef USE_CUDA
 Tensor* TcreateGPU(int r, int c);
-Tensor* TcopyGPU(Tensor* src);
+Tensor* TcopyGPU(const Tensor* src);
 
 inline int Tsize(const Tensor* t) { return t->rows * t->cols; }
 __global__ void k_add(const float* a, const float* b, float* out, int n);
-Tensor* TaddGPU(Tensor* A, Tensor* B);
+Tensor* TaddGPU(const Tensor* A, const Tensor* B);
 __global__ void k_sub(const float* a, const float* b, float* out, int n);
-Tensor* TsubGPU(Tensor* A, Tensor* B);
+Tensor* TsubGPU(const Tensor* A, const Tensor* B);
 
 __global__ void k_mul(const float* a, const float* b, float* out, int n);
-Tensor* TmulGPU(Tensor* A, Tensor* B);
+Tensor* TmulGPU(const Tensor* A, const Tensor* B);
 __global__ void k_matmul(const float* A, const float* B, float* C, int M, int K, int N);
-Tensor* TmatmulGPU(Tensor* A, Tensor* B);
+Tensor* TmatmulGPU(const Tensor* A, const Tensor* B);
 __global__ void k_scale(const float* a, float s, float* out, int n);
-Tensor* TscaleGPU(Tensor* A, float s);
+Tensor* TscaleGPU(const Tensor* A, const float s);
 __global__ void k_sigmoid(float* x, float* out, int n);
-Tensor* TSigmoidGPU(Tensor* A);
+Tensor* TSigmoidGPU(const Tensor* A);
 __global__ void k_sigmoid_prime(const float* x, float* out, int n);
-Tensor* TSigmoidPrimeGPU(Tensor* A);
+Tensor* TSigmoidPrimeGPU(const Tensor* A);
 __global__ void k_relu(float* x, int n);
 void TReluGPU(Tensor* A);
 __global__ void k_relu_prime(const float* x, float* out, int n);
 Tensor* TReluPrimeGPU(Tensor* A);
 __global__ void k_softmax_rows(float* x, float* out, int rows, int cols);
-Tensor* TSoftmaxRowsGPU(Tensor* A);
+Tensor* TSoftmaxRowsGPU(const Tensor* A);
 __global__ void k_softmax_cols(float* x, float* out, int rows, int cols);
-Tensor* TSoftmaxColsGPU(Tensor* A);
+Tensor* TSoftmaxColsGPU(const Tensor* A);
 __global__ void k_transpose(const float* A, float* B, int rows, int cols);
-Tensor* TtransposeGPU(Tensor* A);
+Tensor* TtransposeGPU(const Tensor* A);
 #endif
 // activations
 std::unique_ptr<Tensor> TSigmoid(const Tensor& src);
 std::unique_ptr<Tensor> TSigmoidPrime(const Tensor& src);
 void TRelu(Tensor& t);
 void TReluPrime(Tensor& t);
-void TSoftmaxRows(Tensor& t);
-void TSoftmaxCols(Tensor& t);
+std::unique_ptr<Tensor> TSoftmaxRows(const Tensor& src);
+std::unique_ptr<Tensor> TSoftmaxCols(const Tensor& src);
 void TRandomize(Tensor& t, float fan_in);
 void TPrint(const Tensor& t);
 int TArgmax(const Tensor& t);

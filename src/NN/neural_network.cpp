@@ -100,7 +100,7 @@ ForwardCache forward_pass_batch(NeuralNetwork* net, Tensor* X) {
 
         if (i == L - 1) {
             auto a_next = Tcopy(*z);
-            TSoftmaxCols(*a_next);
+            a_next = TSoftmaxCols(*a_next);
             cache.activations.push_back(std::move(a_next));
         } else {
             auto a_next = Tcopy(*z);
@@ -177,9 +177,13 @@ void Train_batch_imgs(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int 
         auto X = stack_batch_inputs(dataset, start, bs);
         auto Y = stack_batch_labels(dataset, start, bs);
 
+#ifdef USE_CUDA
+        Train_gpu(net, X.get(), Y.get());
+#else
         auto cache = forward_pass_batch(net, X.get());
         auto grads = backward_pass_batch(net, cache, Y.get());
         update_params(net, grads);
+#endif
     }
 }
 
@@ -269,8 +273,8 @@ std::unique_ptr<Tensor> predict(NeuralNetwork* net, Tensor* input) {
             TRelu(*activated);
             out = std::move(activated);
         } else {
-            TSoftmaxCols(*z2);
-            out = std::move(z2);
+            auto n = TSoftmaxCols(*z2);
+            out = std::move(n);
         }
         a = out.get();
     }

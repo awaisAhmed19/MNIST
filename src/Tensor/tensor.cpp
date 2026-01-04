@@ -5,9 +5,13 @@
 // Tensor Life Cycle
 
 Tensor* Tcreate(int r, int c) {
+#ifdef USE_CUDA
+    return TcreateGPU(r, c);
+#else
     Tensor* t = new Tensor(r, c);
     std::fprintf(stderr, "[Tcreate] %p (%dx%d)\n", (void*)t, r, c);
     return t;
+#endif  // USE_CUDA
 }
 
 void Tfree(Tensor*& t) {
@@ -37,12 +41,14 @@ void Tresize(Tensor* t, int r, int c) {}
 // CPU ops (all return NEW tensors)
 
 std::unique_ptr<Tensor> Tcopy(const Tensor& src) {
+#ifdef USE_CUDA
+    return std::unique_ptr<Tensor>(TcopyGPU(&src));
+#else
     auto t = std::make_unique<Tensor>(src.rows, src.cols);
     int size = src.rows * src.cols;
-
     std::memcpy(t->h_data, src.h_data, size * sizeof(float));
-
     return t;
+#endif
 }
 
 std::unique_ptr<Tensor> TsumCols(const Tensor& t) {
@@ -60,6 +66,9 @@ std::unique_ptr<Tensor> TsumCols(const Tensor& t) {
     return out;
 }
 std::unique_ptr<Tensor> Tadd(const Tensor& a, const Tensor& b) {
+#ifdef USE_CUDA
+    return std::unique_ptr<Tensor>(TaddGPU(&a, &b));
+#else
     assert_same_shape(&a, &b);
 
     auto t = std::make_unique<Tensor>(a.rows, a.cols);
@@ -68,9 +77,13 @@ std::unique_ptr<Tensor> Tadd(const Tensor& a, const Tensor& b) {
     for (int i = 0; i < size; ++i) t->h_data[i] = a.h_data[i] + b.h_data[i];
 
     return t;
+#endif  // USE_CUDA
 }
 
 std::unique_ptr<Tensor> Tsub(const Tensor& a, const Tensor& b) {
+#ifdef USE_CUDA
+    return std::unique_ptr<Tensor>(TsubGPU(&a, &b));
+#else
     assert_same_shape(&a, &b);
 
     auto t = std::make_unique<Tensor>(a.rows, a.cols);
@@ -79,9 +92,13 @@ std::unique_ptr<Tensor> Tsub(const Tensor& a, const Tensor& b) {
     for (int i = 0; i < size; ++i) t->h_data[i] = a.h_data[i] - b.h_data[i];
 
     return t;
+#endif  // USE_CUDA
 }
 
 std::unique_ptr<Tensor> Tmul(const Tensor& a, const Tensor& b) {
+#ifdef USE_CUDA
+    return std::unique_ptr<Tensor>(TmulGPU(&a, &b));
+#else
     assert_same_shape(&a, &b);
 
     auto t = std::make_unique<Tensor>(a.rows, a.cols);
@@ -90,6 +107,7 @@ std::unique_ptr<Tensor> Tmul(const Tensor& a, const Tensor& b) {
     for (int i = 0; i < size; ++i) t->h_data[i] = a.h_data[i] * b.h_data[i];
 
     return t;
+#endif  // USE_CUDA
 }
 
 float Tdot(const Tensor& a, const Tensor& b) {
@@ -103,12 +121,15 @@ float Tdot(const Tensor& a, const Tensor& b) {
     return acc;
 }
 
-std::unique_ptr<Tensor> Tmatmul(const Tensor& A, const Tensor& B) {
-    if (A.cols != B.rows) throw std::runtime_error("Matmul shape mismatch");
+std::unique_ptr<Tensor> Tmatmul(const Tensor& a, const Tensor& b) {
+#ifdef USE_CUDA
+    return std::unique_ptr<Tensor>(TmatmulGPU(&a, &b));
+#else
+    if (a.cols != b.rows) throw std::runtime_error("Matmul shape mismatch");
 
-    int M = A.rows;
-    int K = A.cols;
-    int N = B.cols;
+    int M = a.rows;
+    int K = a.cols;
+    int N = b.cols;
 
     auto C = std::make_unique<Tensor>(M, N);
 
@@ -116,27 +137,33 @@ std::unique_ptr<Tensor> Tmatmul(const Tensor& A, const Tensor& B) {
         for (int j = 0; j < N; j++) {
             float sum = 0.0f;
             for (int p = 0; p < K; p++) {
-                float a = A.h_data[i * K + p];
-                float b = B.h_data[p * N + j];
-                sum += a * b;
+                float t = a.h_data[i * K + p];
+                float u = b.h_data[p * N + j];
+                sum += t * u;
             }
             C->h_data[i * N + j] = sum;
         }
     }
 
     return C;
+#endif  // USE_CUDA
 }
 
-std::unique_ptr<Tensor> TmulScalar(const Tensor& in, float s) {
+std::unique_ptr<Tensor> TmulScalar(const Tensor& in, const float s) {
+#ifdef USE_CUDA
+    return std::unique_ptr<Tensor>(TscaleGPU(&in, s));
+#else
+
     auto t = std::make_unique<Tensor>(in.rows, in.cols);
     int size = in.rows * in.cols;
 
     for (int i = 0; i < size; ++i) t->h_data[i] = in.h_data[i] * s;
 
     return t;
+#endif  // USE_CUDA
 }
 
-std::unique_ptr<Tensor> TaddScalar(const Tensor& in, float s) {
+std::unique_ptr<Tensor> TaddScalar(const Tensor& in, const float s) {
     auto t = std::make_unique<Tensor>(in.rows, in.cols);
     int size = in.rows * in.cols;
 
@@ -147,15 +174,22 @@ std::unique_ptr<Tensor> TaddScalar(const Tensor& in, float s) {
 // activations
 
 std::unique_ptr<Tensor> TSigmoid(const Tensor& src) {
+#ifdef USE_CUDA
+    return std::unique_ptr<Tensor>(TSigmoidGPU(&src));
+#else
     auto out = std::make_unique<Tensor>(src.rows, src.cols);
     int size = out->size();
     for (int i = 0; i < size; i++) {
         out->h_data[i] = 1.0f / (1.0f + expf(-src.h_data[i]));
     }
     return out;
+#endif  // USE_CUDA
 }
 
 std::unique_ptr<Tensor> TSigmoidPrime(const Tensor& src) {
+#ifdef USE_CUDA
+    return std::unique_ptr<Tensor>(TSigmoidPrimeGPU(&src));
+#else
     auto out = std::make_unique<Tensor>(src.rows, src.cols);
     int size = out->size();
     for (int i = 0; i < size; i++) {
@@ -163,61 +197,81 @@ std::unique_ptr<Tensor> TSigmoidPrime(const Tensor& src) {
         out->h_data[i] = s * (1.0f - s);
     }
     return out;
+#endif  // USE_CUDA
 }
 
 void TRelu(Tensor& t) {
+#ifdef USE_CUDA
+
+    TReluGPU(&t);
+#else
+
     int size = t.rows * t.cols;
     for (int i = 0; i < size; i++) {
         if (t.h_data[i] < 0) t.h_data[i] = 0.0f;
     }
+#endif
 }
 
 void TReluPrime(Tensor& t) {
+#ifdef USE_CUDA
+
+    TReluPrimeGPU(&t);
+#else
+
     int size = t.rows * t.cols;
     for (int i = 0; i < size; i++) {
         t.h_data[i] = (t.h_data[i] > 0.0f) ? 1.0f : 0.0f;
     }
+#endif
 }
 
-void TSoftmaxRows(Tensor& t) {
-    int m = t.rows;
-    int n = t.cols;
+std::unique_ptr<Tensor> TSoftmaxRows(const Tensor& src) {
+#ifdef USE_CUDA
+    return std::unique_ptr<Tensor>(TSoftmaxRowsGPU(&src));
+#else
+    auto t = std::make_unique<Tensor>(src);  // copy
+    int m = t->rows;
+    int n = t->cols;
 
     // Special case: single-column vector (softmax over rows)
     if (n == 1) {
-        float maxv = t.h_data[0];
-        for (int r = 1; r < m; ++r) maxv = std::max(maxv, t.h_data[r]);
+        float maxv = t->h_data[0];
+        for (int r = 1; r < m; ++r) maxv = std::max(maxv, t->h_data[r]);
 
         float sum = 0.0f;
         for (int r = 0; r < m; ++r) {
-            float e = expf(t.h_data[r] - maxv);
+            float e = expf(t->h_data[r] - maxv);
             e = std::max(e, 1e-12f);
-            t.h_data[r] = e;
+            t->h_data[r] = e;
             sum += e;
         }
 
         if (sum == 0.0f) sum = 1e-12f;
-        for (int r = 0; r < m; ++r) t.h_data[r] /= sum;
+        for (int r = 0; r < m; ++r) t->h_data[r] /= sum;
 
-        return;
+        return t;
     }
 
-    // General case: softmax row-wise
+    // General case: row-wise softmax
     for (int r = 0; r < m; ++r) {
-        float maxv = t.h_data[r * n];
-        for (int j = 1; j < n; ++j) maxv = std::max(maxv, t.h_data[r * n + j]);
+        float maxv = t->h_data[r * n];
+        for (int j = 1; j < n; ++j) maxv = std::max(maxv, t->h_data[r * n + j]);
 
         float sum = 0.0f;
         for (int j = 0; j < n; ++j) {
-            float e = expf(t.h_data[r * n + j] - maxv);
+            float e = expf(t->h_data[r * n + j] - maxv);
             e = std::max(e, 1e-12f);
-            t.h_data[r * n + j] = e;
+            t->h_data[r * n + j] = e;
             sum += e;
         }
 
         if (sum == 0.0f) sum = 1e-12f;
-        for (int j = 0; j < n; ++j) t.h_data[r * n + j] /= sum;
+        for (int j = 0; j < n; ++j) t->h_data[r * n + j] /= sum;
     }
+
+    return t;
+#endif
 }
 
 // utilities
@@ -238,28 +292,51 @@ float Tuni_dist_std(float l, float h) {
 }
 
 std::unique_ptr<Tensor> Ttranspose(const Tensor& t) {
+#ifdef USE_CUDA
+    return std::unique_ptr<Tensor>(TtransposeGPU(&t));
+#else
     auto out = std::make_unique<Tensor>(t.cols, t.rows);
 
     for (int r = 0; r < t.rows; r++)
         for (int c = 0; c < t.cols; c++) out->h_data[c * t.rows + r] = t.h_data[r * t.cols + c];
 
     return out;
+#endif
 }
 
-void TSoftmaxCols(Tensor& t) {
-    for (int j = 0; j < t.cols; j++) {
+std::unique_ptr<Tensor> TSoftmaxCols(const Tensor& src) {
+#ifdef USE_CUDA
+    return std::unique_ptr<Tensor>(TSoftmaxColsGPU(&src));
+#else
+    auto t = std::make_unique<Tensor>(src);
+
+    int rows = t->rows;
+    int cols = t->cols;
+
+    for (int j = 0; j < cols; j++) {
         float maxv = -INFINITY;
-        for (int i = 0; i < t.rows; i++) maxv = std::max(maxv, t.h_data[i * t.cols + j]);
+
+        // find max in column
+        for (int i = 0; i < rows; i++) maxv = std::max(maxv, t->h_data[i * cols + j]);
 
         float sum = 0.0f;
-        for (int i = 0; i < t.rows; i++) {
-            float e = std::exp(t.h_data[i * t.cols + j] - maxv);
-            t.h_data[i * t.cols + j] = e;
+
+        // exponentiate (with stability)
+        for (int i = 0; i < rows; i++) {
+            float e = std::exp(t->h_data[i * cols + j] - maxv);
+            e = std::max(e, 1e-12f);
+            t->h_data[i * cols + j] = e;
             sum += e;
         }
 
-        for (int i = 0; i < t.rows; i++) t.h_data[i * t.cols + j] /= sum;
+        if (sum == 0.0f) sum = 1e-12f;
+
+        // normalize column
+        for (int i = 0; i < rows; i++) t->h_data[i * cols + j] /= sum;
     }
+
+    return t;
+#endif
 }
 
 void TRandomize(Tensor& t, float fan_in) {
