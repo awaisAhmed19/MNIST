@@ -251,6 +251,10 @@ float evaluate_accuracy(NeuralNetwork* net, std::vector<Filer::Img>& dataset, in
         return 0.0f;  // No samples to evaluate
     }
     
+    if (n > static_cast<int>(dataset.size())) {
+        throw std::runtime_error("evaluate_accuracy: n exceeds dataset size");
+    }
+    
     int correct = 0;
 
     for (int i = 0; i < n; i++) {
@@ -340,6 +344,11 @@ NeuralNetwork* load(const std::string& dir_name) {
 
         int L;
         desc >> L;
+
+        if (L < 2 || L > 100) {
+            std::cerr << "Invalid number of layers: " << L << "\n";
+            return nullptr;
+        }
 
         std::vector<int> layers(L);
         for (int i = 0; i < L; i++) desc >> layers[i];

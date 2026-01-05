@@ -108,6 +108,9 @@ __global__ void k_softmax_rows(const float* x, float* out,
         sum += e;
     }
 
+    // Safeguard against division by zero
+    if (sum < 1e-10f) sum = 1e-10f;
+
     for (int j = 0; j < cols; j++)
         out[base + j] /= sum;
 }
@@ -127,6 +130,9 @@ __global__ void k_softmax_cols(const float* x, float* out,
         out[r * cols + c] = e;
         sum += e;
     }
+
+    // Safeguard against division by zero
+    if (sum < 1e-10f) sum = 1e-10f;
 
     for (int r = 0; r < rows; r++)
         out[r * cols + c] /= sum;
