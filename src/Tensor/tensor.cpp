@@ -232,6 +232,10 @@ std::unique_ptr<Tensor> TSoftmaxRows(const Tensor& src) {
     auto t = std::make_unique<Tensor>(src);
     int m = t->rows, n = t->cols;
 
+    if (n == 0) {
+        throw std::runtime_error("TSoftmaxRows: tensor has zero columns");
+    }
+
     for (int r = 0; r < m; r++) {
         float maxv = t->h_data[r * n];
         for (int j = 1; j < n; j++) maxv = std::max(maxv, t->h_data[r * n + j]);
@@ -242,6 +246,10 @@ std::unique_ptr<Tensor> TSoftmaxRows(const Tensor& src) {
             t->h_data[r * n + j] = e;
             sum += e;
         }
+        
+        // Safeguard against division by zero (should not happen in practice)
+        if (sum < 1e-10f) sum = 1e-10f;
+        
         for (int j = 0; j < n; j++) t->h_data[r * n + j] /= sum;
     }
 
@@ -257,6 +265,10 @@ std::unique_ptr<Tensor> TSoftmaxCols(const Tensor& src) {
     auto t = std::make_unique<Tensor>(src);
     int rows = t->rows, cols = t->cols;
 
+    if (rows == 0) {
+        throw std::runtime_error("TSoftmaxCols: tensor has zero rows");
+    }
+
     for (int c = 0; c < cols; c++) {
         float maxv = -INFINITY;
         for (int r = 0; r < rows; r++) maxv = std::max(maxv, t->h_data[r * cols + c]);
@@ -267,6 +279,10 @@ std::unique_ptr<Tensor> TSoftmaxCols(const Tensor& src) {
             t->h_data[r * cols + c] = e;
             sum += e;
         }
+        
+        // Safeguard against division by zero (should not happen in practice)
+        if (sum < 1e-10f) sum = 1e-10f;
+        
         for (int r = 0; r < rows; r++) t->h_data[r * cols + c] /= sum;
     }
 
@@ -302,6 +318,10 @@ std::unique_ptr<Tensor> Ttranspose(const Tensor& t) {
 }
 
 void TRandomize(Tensor& t, float fan_in) {
+    if (fan_in <= 0) {
+        throw std::runtime_error("TRandomize: fan_in must be positive");
+    }
+    
     float bound = sqrtf(6.0f / fan_in);
     int n = t.rows * t.cols;
 

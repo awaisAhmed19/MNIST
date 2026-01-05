@@ -113,6 +113,9 @@ BackwardCache backward_pass_batch(NeuralNetwork* net, const ForwardCache& cache,
     std::vector<std::unique_ptr<Tensor>> dZ(L);
 
     int batch = Y->cols;
+    if (batch == 0) {
+        throw std::runtime_error("Batch size cannot be zero in backward_pass_batch");
+    }
     float inv = 1.0f / batch;
 
     // Output layer delta
@@ -216,6 +219,10 @@ float cross_entropy_batch(const Tensor& predictions, const Tensor& targets) {
     int num_classes = predictions.rows;
     int batch = predictions.cols;
 
+    if (batch == 0) {
+        return 0.0f;  // No samples, no loss
+    }
+
     for (int b = 0; b < batch; b++) {
         float example_loss = 0.0f;
 
@@ -240,6 +247,10 @@ std::unique_ptr<Tensor> predict_img(NeuralNetwork* net, Filer::Img& img) {
 }
 
 float evaluate_accuracy(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int n) {
+    if (n == 0) {
+        return 0.0f;  // No samples to evaluate
+    }
+    
     int correct = 0;
 
     for (int i = 0; i < n; i++) {
