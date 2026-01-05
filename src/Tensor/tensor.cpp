@@ -335,10 +335,15 @@ float Tuni_dist_std(float l, float h) {
 }
 int TArgmax(const Tensor& t) {
     TtoHost(const_cast<Tensor&>(t));
+    
+    // For column vectors, find the row with max value
+    // For general tensors, find the index in flattened array
+    int size = (t.cols == 1) ? t.rows : (t.rows * t.cols);
+    
     int idx = 0;
     float maxv = t.h_data[0];
 
-    for (int i = 1; i < t.rows; i++)
+    for (int i = 1; i < size; i++)
         if (t.h_data[i] > maxv) {
             maxv = t.h_data[i];
             idx = i;

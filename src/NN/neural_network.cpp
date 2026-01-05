@@ -32,6 +32,10 @@ NeuralNetwork* Create(int input, int hidden, int output, float lr) {
 }
 std::unique_ptr<Tensor> stack_batch_inputs(const std::vector<Filer::Img>& dataset, int start,
                                            int batch_size) {
+    if (dataset.empty() || start >= dataset.size()) {
+        throw std::runtime_error("Invalid dataset or start index in stack_batch_inputs");
+    }
+    
     int cols = batch_size;
     int rows = dataset[0].img_data->rows * dataset[0].img_data->cols;
 
@@ -52,6 +56,10 @@ std::unique_ptr<Tensor> stack_batch_inputs(const std::vector<Filer::Img>& datase
 // Efficient batch label stacking: create one-hot labels directly.
 std::unique_ptr<Tensor> stack_batch_labels(const std::vector<Filer::Img>& dataset, int start,
                                            int batch_size) {
+    if (dataset.empty() || start >= dataset.size()) {
+        throw std::runtime_error("Invalid dataset or start index in stack_batch_labels");
+    }
+    
     int cols = batch_size;
     auto Y = std::make_unique<Tensor>(10, cols);
 
@@ -137,11 +145,16 @@ void update_params(NeuralNetwork* net, const BackwardCache& grads) {
     int L = net->layers.size() - 1;
 
     for (int i = 0; i < L; i++) {
+#ifdef USE_CUDA
+        TupdateGPU(*net->weights[i], *grads.dW[i], net->learningRate);
+        TupdateGPU(*net->biases[i], *grads.dB[i], net->learningRate);
+#else
         auto scaledW = TmulScalar(*grads.dW[i], net->learningRate);
         auto scaledB = TmulScalar(*grads.dB[i], net->learningRate);
 
-        TupdateGPU(*net->weights[i], *grads.dW[i], net->learningRate);
+        net->weights[i] = Tsub(*net->weights[i], *scaledW);
         net->biases[i] = Tsub(*net->biases[i], *scaledB);
+#endif
     }
 }
 void Train_batch_imgs(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int batch_size) {
