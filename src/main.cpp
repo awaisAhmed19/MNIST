@@ -46,9 +46,6 @@ int main(int argc, char* argv[]) {
 
     auto net = std::make_unique<NeuralNetwork>(LAYERS, LEARNING_RATE);
 
-    // ---------------------------------------------------------------
-    // Sanity check (one sample) — verifies training pipeline is valid
-    // ---------------------------------------------------------------
     {
         std::cout << "\nSanity check before training\n";
 
@@ -71,9 +68,6 @@ int main(int argc, char* argv[]) {
         std::cout << "Loss after : " << loss_after << "\n";
     }
 
-    // ---------------------------------------------------------------
-    // Training loop (mini-batch)
-    // ---------------------------------------------------------------
     float best_val = 0.0f;
     auto total_start = std::chrono::high_resolution_clock::now();
 

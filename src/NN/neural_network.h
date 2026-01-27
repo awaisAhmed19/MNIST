@@ -50,6 +50,7 @@ void Train_batch_imgs(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int 
 std::unique_ptr<Tensor> predict_img(NeuralNetwork* net, Filer::Img& img);
 float evaluate_accuracy(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int n);
 std::unique_ptr<Tensor> predict(NeuralNetwork* net, Tensor* input);
+std::unique_ptr<Tensor> predict_R(NeuralNetwork* net, Tensor* input);
 
 std::unique_ptr<Tensor> TaddBias(const Tensor& mat, const Tensor& bias);
 std::unique_ptr<Tensor> stack_batch_inputs(const std::vector<Filer::Img>& dataset, int start,

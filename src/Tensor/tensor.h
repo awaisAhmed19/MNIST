@@ -156,11 +156,13 @@ std::unique_ptr<Tensor> Tadd(const Tensor& a, const Tensor& b);
 std::unique_ptr<Tensor> Tsub(const Tensor& a, const Tensor& b);
 std::unique_ptr<Tensor> Tmul(const Tensor& a, const Tensor& b);
 std::unique_ptr<Tensor> Tmatmul(const Tensor& A, const Tensor& B);
+std::unique_ptr<Tensor> Tmatmul_R(const Tensor& A, const Tensor& B);
 std::unique_ptr<Tensor> TmulScalar(const Tensor& in, float s);
 std::unique_ptr<Tensor> TaddScalar(const Tensor& in, float s);
 std::unique_ptr<Tensor> TsumCols(const Tensor& t);
 
 std::unique_ptr<Tensor> TaddBias(const Tensor& mat, const Tensor& bias);
+std::unique_ptr<Tensor> TaddBias_R(const Tensor& mat, const Tensor& bias);
 // ---------------- CUDA ops (NEW API) ----------------
 #ifdef USE_CUDA
 
