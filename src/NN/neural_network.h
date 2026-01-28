@@ -25,7 +25,7 @@ struct NeuralNetwork {
             auto b = std::make_unique<Tensor>(out, 1);
 
             TRandomize(*w, in);
-            TRandomize(*b, in);
+            // Biases are initialized to zero (already done in Tensor constructor)
 
             weights.push_back(std::move(w));
             biases.push_back(std::move(b));

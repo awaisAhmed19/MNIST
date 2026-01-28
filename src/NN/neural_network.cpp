@@ -32,6 +32,10 @@ NeuralNetwork* Create(int input, int hidden, int output, float lr) {
 }
 std::unique_ptr<Tensor> stack_batch_inputs(const std::vector<Filer::Img>& dataset, int start,
                                            int batch_size) {
+    if (dataset.empty() || start >= dataset.size()) {
+        throw std::runtime_error("Invalid dataset or start index in stack_batch_inputs");
+    }
+    
     int cols = batch_size;
     int rows = dataset[0].img_data->rows * dataset[0].img_data->cols;
 
@@ -52,6 +56,10 @@ std::unique_ptr<Tensor> stack_batch_inputs(const std::vector<Filer::Img>& datase
 // Efficient batch label stacking: create one-hot labels directly.
 std::unique_ptr<Tensor> stack_batch_labels(const std::vector<Filer::Img>& dataset, int start,
                                            int batch_size) {
+    if (dataset.empty() || start >= dataset.size()) {
+        throw std::runtime_error("Invalid dataset or start index in stack_batch_labels");
+    }
+    
     int cols = batch_size;
     auto Y = std::make_unique<Tensor>(10, cols);
 
@@ -105,6 +113,9 @@ BackwardCache backward_pass_batch(NeuralNetwork* net, const ForwardCache& cache,
     std::vector<std::unique_ptr<Tensor>> dZ(L);
 
     int batch = Y->cols;
+    if (batch == 0) {
+        throw std::runtime_error("Batch size cannot be zero in backward_pass_batch");
+    }
     float inv = 1.0f / batch;
 
     // Output layer delta
@@ -137,11 +148,16 @@ void update_params(NeuralNetwork* net, const BackwardCache& grads) {
     int L = net->layers.size() - 1;
 
     for (int i = 0; i < L; i++) {
+#ifdef USE_CUDA
+        TupdateGPU(*net->weights[i], *grads.dW[i], net->learningRate);
+        TupdateGPU(*net->biases[i], *grads.dB[i], net->learningRate);
+#else
         auto scaledW = TmulScalar(*grads.dW[i], net->learningRate);
         auto scaledB = TmulScalar(*grads.dB[i], net->learningRate);
 
-        TupdateGPU(*net->weights[i], *grads.dW[i], net->learningRate);
+        net->weights[i] = Tsub(*net->weights[i], *scaledW);
         net->biases[i] = Tsub(*net->biases[i], *scaledB);
+#endif
     }
 }
 void Train_batch_imgs(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int batch_size) {
@@ -203,6 +219,10 @@ float cross_entropy_batch(const Tensor& predictions, const Tensor& targets) {
     int num_classes = predictions.rows;
     int batch = predictions.cols;
 
+    if (batch == 0) {
+        return 0.0f;  // No samples, no loss
+    }
+
     for (int b = 0; b < batch; b++) {
         float example_loss = 0.0f;
 
@@ -227,6 +247,14 @@ std::unique_ptr<Tensor> predict_img(NeuralNetwork* net, Filer::Img& img) {
 }
 
 float evaluate_accuracy(NeuralNetwork* net, std::vector<Filer::Img>& dataset, int n) {
+    if (n == 0) {
+        return 0.0f;  // No samples to evaluate
+    }
+    
+    if (n > static_cast<int>(dataset.size())) {
+        throw std::runtime_error("evaluate_accuracy: n exceeds dataset size");
+    }
+    
     int correct = 0;
 
     for (int i = 0; i < n; i++) {
@@ -316,6 +344,11 @@ NeuralNetwork* load(const std::string& dir_name) {
 
         int L;
         desc >> L;
+
+        if (L < 2 || L > 100) {
+            std::cerr << "Invalid number of layers: " << L << "\n";
+            return nullptr;
+        }
 
         std::vector<int> layers(L);
         for (int i = 0; i < L; i++) desc >> layers[i];
