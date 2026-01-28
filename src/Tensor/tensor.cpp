@@ -4,6 +4,15 @@
 
 // Tensor Life Cycle
 
+void TtoHost(Tensor& t) {
+    // CPU backend: tensor already lives in host memory
+    (void)t;
+}
+
+void TtoDevice(Tensor& t) {
+    // CPU backend: no device memory
+    (void)t;
+}
 Tensor* Tcreate(int r, int c) {
     // Constructor now allocates host + (if CUDA) device memory automatically
     Tensor* t = new Tensor(r, c);

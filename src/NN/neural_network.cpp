@@ -140,7 +140,12 @@ void update_params(NeuralNetwork* net, const BackwardCache& grads) {
         auto scaledW = TmulScalar(*grads.dW[i], net->learningRate);
         auto scaledB = TmulScalar(*grads.dB[i], net->learningRate);
 
+#ifdef USE_CUDA
         TupdateGPU(*net->weights[i], *grads.dW[i], net->learningRate);
+// #else
+// Tupdate(*net->weights[i], *grads.dW[i], net->learningRate);
+#endif
+
         net->biases[i] = Tsub(*net->biases[i], *scaledB);
     }
 }

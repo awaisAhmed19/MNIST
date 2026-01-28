@@ -4,8 +4,8 @@
 
 //  Synchronization
 
-void TtoDevice(Tensor& t) {
 #ifdef USE_CUDA
+void TtoDevice(Tensor& t) {
     if (!t.dirty_device) return;
 
     CUDA_CHECK(cudaMemcpy(
@@ -15,11 +15,11 @@ void TtoDevice(Tensor& t) {
         cudaMemcpyHostToDevice));
 
     t.dirty_device = false;
-#endif
 }
 
-void TtoHost(Tensor& t) {
+#endif
 #ifdef USE_CUDA
+void TtoHost(Tensor& t) {
     if (!t.dirty_host) return;
 
     CUDA_CHECK(cudaMemcpy(
@@ -29,8 +29,8 @@ void TtoHost(Tensor& t) {
         cudaMemcpyDeviceToHost));
 
     t.dirty_host = false;
-#endif
 }
+#endif
 
 //  Kernels
 

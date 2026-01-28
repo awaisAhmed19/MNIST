@@ -1,25 +1,21 @@
 #pragma once
 
-#include <iomanip>
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "../Filer.h"
 #include "../NN/neural_network.h"
 #include "../Tensor/tensor.h"
+#include "nn.h"
+
 extern Filer filer;
 
-enum class VizOp { Copy, MatMul, AddBias, ReLU, Softmax };
+extern int g_lastPrediction;
 
-struct VizEvent {
-    VizOp op;
-    const Tensor* A;    // input
-    const Tensor* B;    // optional (weights/bias)
-    const Tensor* Out;  // output
-};
+// ---------------- Visualization ----------------
 
-using VizCallback = void (*)(const VizEvent&);
-
-extern VizCallback g_viz;
+// Timeline storage (DEFINED IN .cpp)
+bool init_predictor();
+void predict_on_save(const std::string& path);
 void print(const std::string& file);
-void predict_on_save(const std::string& pred_in);
